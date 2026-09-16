@@ -11,4 +11,3 @@ python-multipart
 pytest
 httpx
 playwright
-pytest-playwright
