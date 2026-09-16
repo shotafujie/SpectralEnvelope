@@ -70,8 +70,7 @@ def test_TC_055_1_smoothの丸め():
 
 
 @pytest.mark.parametrize("bands", [[0, 0, 0], ["a", 0, 0, 0]])
-def test_bands形式不正はバリデーションエラー(bands):
-    # API レベルの 422 は TC-056-1/2 で確認する。ここはその前提となるモデルの挙動。
+def test_TC_056_3_bands形式不正はバリデーションエラー(bands):
     with pytest.raises(ValidationError):
         Params(bands=bands)
 

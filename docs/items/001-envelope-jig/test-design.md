@@ -95,7 +95,7 @@
 
 ### SPEC-014 10 件目までは保持
 
-- **TC-014-1** 10 回分解 → 1 件目〜10 件目すべての `id` で original が 200
+- **TC-014-1** 10 回分解 → 1 件目〜10 件目すべての `id` で original / synthesize / envelope がいずれも 200
 
 ### SPEC-020 元音 WAV の形式
 
@@ -132,6 +132,7 @@
 
 - **TC-034-1** WAV 化関数に [1.5, −1.5, 0.5] → 読み戻した int16 が [32767, −32767, 16384 ±1]
 - **TC-034-2** WAV 化関数に [1.0, −1.0] → [32767, −32767]（符号が反転しない）
+- **TC-034-3** `pyworld.synthesize` を ±1.5 の矩形波を返すスタブに差し替えて `/api/synthesize` → 返った WAV の int16 が 32767 と −32767 だけで構成される
 
 ### SPEC-035 合成の未知 id
 
@@ -139,11 +140,11 @@
 
 ### SPEC-036 ap は不変
 
-- **TC-036-1** 全パラメータ非初期値で synthesize → 合成に渡る ap が、params 省略時に渡る ap と要素単位で一致
+- **TC-036-1** params 省略と全パラメータ非初期値で synthesize → 両方で合成に渡る ap が、`/api/original` の WAV をテスト側で harvest + d4c（fft_size 2048）にかけて独立に求めた ap と要素単位で一致
 
 ### SPEC-037 合成と包絡の sp が一致
 
-- **TC-037-1** params = {formant 1.2, tilt 3, bands [2,−2,4,−4], smooth 30} → 合成に渡る sp のフレーム 50 と 200 の dB 値が、同 params の envelope の `modified_db` と差 1e-6 以内
+- **TC-037-1** params = {formant 1.2, tilt 3, bands [2,−2,4,−4], smooth 30, pitch 1.3} → 合成に渡る sp の全フレームの dB 値が、同 params の envelope の各フレームの `modified_db` と差 1e-6 以内
 
 ### SPEC-040 包絡応答の形
 
@@ -206,6 +207,7 @@
 
 - **TC-056-1** bands 要素数 3 で envelope → 422
 - **TC-056-2** bands に文字列 "a" を含めて synthesize → 422
+- **TC-056-3** パラメータ解釈で bands の要素数 3、または文字列を含む → バリデーションエラー
 
 ### SPEC-060 formant の線形補間
 
@@ -300,7 +302,7 @@
 
 ### SPEC-202 送信中は録音ボタン無効
 
-- **TC-202-1** `/api/analyze` の応答を 1 秒遅らせる → 停止直後に録音ボタンが disabled、応答後に enabled
+- **TC-202-1** `/api/analyze` の要求をテスト側で保留する → 保留中は録音ボタンが disabled、要求を通して応答が返ると enabled
 
 ### SPEC-203 10 秒で自動停止
 
@@ -313,6 +315,7 @@
 ### SPEC-205 未分解時は再生ボタン無効
 
 - **TC-205-1** ページ読み込み直後 → 元音・加工音ボタンが disabled
+- **TC-205-2** 初回の録音中、および分解が 400 で失敗した後 → 元音・加工音ボタンが disabled
 
 ### SPEC-210 2 本の包絡線
 
@@ -344,7 +347,7 @@
 
 ### SPEC-223 フレーム変更で包絡取得
 
-- **TC-223-1** フレームスライダーを別の値へ → 300ms 後以降に、その `frame` を持つ envelope 要求が発生する
+- **TC-223-1** フレームスライダーを別の値へ → 変更から 0.29 秒以上後に、その `frame` を持つ envelope 要求が 1 件発生する
 
 ### SPEC-230 スライダーの範囲・刻み・初期値
 
@@ -377,15 +380,17 @@
 
 ### SPEC-240 加工音ボタン
 
-- **TC-240-1** formant 1.3 にして加工音ボタン → synthesize 要求の `params.formant` == 1.3、`<audio>` の `data-source` == processed、再生中（paused == false）
+- **TC-240-1** formant 1.3 にして加工音ボタン → synthesize 要求の `params.formant` == 1.3、`<audio>` の `data-source` == processed、再生中（paused == false）、再生開始を観測した時点の currentTime < 0.5
+- **TC-240-2** 加工音を 0.8 秒再生した後に再度加工音ボタン → 再生開始を観測した時点の currentTime < 0.5
 
 ### SPEC-241 合成待ちのローディング表示
 
-- **TC-241-1** synthesize 応答を 1 秒遅らせて加工音ボタン → 待ちの間ボタンが `aria-busy="true"`、応答後に消える
+- **TC-241-1** `/api/synthesize` の要求をテスト側で保留して加工音ボタン → 保留中はボタンが `aria-busy="true"`、要求を通して応答が返ると消える
 
 ### SPEC-242 元音ボタン
 
-- **TC-242-1** 元音ボタン → `data-source` == original、src が `/api/original/<id>` を指す、再生中
+- **TC-242-1** 元音ボタン → `data-source` == original、src が `/api/original/<id>` を指す、再生中、再生開始を観測した時点の currentTime < 0.5
+- **TC-242-2** 元音を 0.8 秒再生した後に再度元音ボタン → currentTime が 0.5 未満に戻って再生中
 
 ### SPEC-243 スペースキーで A/B
 
@@ -403,7 +408,7 @@
 
 ### SPEC-250 プリセット
 
-- **TC-250-1** 各プリセットを押す → スライダー値が表どおり（子供っぽく: formant 1.25, pitch 1.15, 他初期値。太く: formant 0.85, tilt −3。こもる: bands [4,0,−6,−10]。のっぺり: smooth 16。素通し: 全初期値）
+- **TC-250-1** 各プリセットを押す → スライダー値が SPEC-250 の値どおり（子供っぽく: formant 1.25, pitch 1.15, 他初期値。太く: formant 0.85, tilt −3。こもる: bands [4,0,−6,−10]。のっぺり: smooth 16。素通し: 全初期値）
 - **TC-250-2** 「太く」の後に「こもる」→ formant 1.0, tilt 0 に戻り bands のみ設定
 
 ### SPEC-260 API エラーの表示

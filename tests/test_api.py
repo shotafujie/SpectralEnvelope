@@ -206,7 +206,13 @@ def test_TC_013_2_11件目で2件目は残る(client, analyze):
 
 def test_TC_014_1_10件までは全て残る(client, analyze):
     ids = _analyze_n(analyze, 10)
-    assert [client.get(f"/api/original/{i}").status_code for i in ids] == [200] * 10
+    statuses = [
+        (client.get(f"/api/original/{i}").status_code,
+         synth(client, i, omit=True).status_code,
+         envelope(client, i, 0).status_code)
+        for i in ids
+    ]
+    assert statuses == [(200, 200, 200)] * 10
 
 
 # ---------------------------------------------------------------- original
@@ -269,25 +275,39 @@ def test_TC_033_1_無加工の3通りは同一(client, analyze):
     assert a == b == c
 
 
+def test_TC_034_3_合成APIの出力も16bit化で飽和する(client, analyze, monkeypatch):
+    id_ = analyze().json()["id"]
+    monkeypatch.setattr(pyworld, "synthesize", lambda f0, sp, ap, fs, fp=5.0: np.tile([1.5, -1.5], FS * 5))
+    y, _, _ = af.read_wav(synth(client, id_, omit=True).content)
+    pcm = np.round(y * 32768).astype(int)
+    assert set(np.unique(pcm)) == {32767, -32767}
+
+
 def test_TC_035_1_合成の未知id(client):
     assert synth(client, "deadbeef", omit=True).status_code == 404
 
 
-def test_TC_036_1_apは加工されない(client, analyze, synth_spy):
+def test_TC_036_1_apは分解時のままで加工されない(client, analyze, synth_spy):
     id_ = analyze().json()["id"]
+    x, _, _ = af.read_wav(client.get(f"/api/original/{id_}").content)
+    f0, t = pyworld.harvest(x, FS, frame_period=5.0)
+    ap = pyworld.d4c(x, f0, t, FS, fft_size=2048)
     synth(client, id_, omit=True)
     synth(client, id_, ALL_PARAMS)
-    np.testing.assert_array_equal(synth_spy[0]["ap"], synth_spy[1]["ap"])
+    np.testing.assert_array_equal(synth_spy[0]["ap"], ap)
+    np.testing.assert_array_equal(synth_spy[1]["ap"], ap)
 
 
 def test_TC_037_1_合成のspと包絡APIのmodified_dbが一致する(client, analyze, synth_spy):
-    id_ = analyze().json()["id"]
-    params = {k: v for k, v in ALL_PARAMS.items() if k != "pitch"}
-    synth(client, id_, params)
+    info = analyze().json()
+    synth(client, info["id"], ALL_PARAMS)
     sp = synth_spy[-1]["sp"]
-    for frame in (50, 200):
-        m = envelope(client, id_, frame, params).json()["modified_db"]
-        np.testing.assert_allclose(10 * np.log10(sp[frame]), m, atol=1e-6)
+    assert len(sp) == info["frames"]
+    shown = np.array([
+        envelope(client, info["id"], frame, ALL_PARAMS).json()["modified_db"]
+        for frame in range(info["frames"])
+    ])
+    np.testing.assert_allclose(10 * np.log10(sp), shown, atol=1e-6)
 
 
 # ---------------------------------------------------------------- envelope

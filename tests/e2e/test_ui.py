@@ -148,11 +148,32 @@ def slider_values(page):
 
 
 def wait_playing(page, source):
-    page.wait_for_function(
+    """指定の音が再生中になるまで待ち、そのときの currentTime を返す。"""
+    handle = page.wait_for_function(
         "src => { const a = document.querySelector('#player');"
-        " return a.dataset.source === src && !a.paused && a.currentTime > 0; }",
+        " return a.dataset.source === src && !a.paused && a.currentTime > 0 && a.currentTime; }",
         arg=source,
+        polling=20,
     )
+    return handle.json_value()
+
+
+def hold_requests(page, pattern):
+    """pattern に一致する要求を保留する。戻り値のリストに route が溜まるので、テスト側で continue_ する。"""
+    held = []
+
+    def handler(route):
+        held.append(route)
+
+    page.route(pattern, handler)
+    return held
+
+
+def wait_held(page, held, timeout=10.0):
+    deadline = time.monotonic() + timeout
+    while not held:
+        assert time.monotonic() < deadline, "request was not issued"
+        page.wait_for_timeout(50)
 
 
 def rgb(css):
@@ -184,16 +205,16 @@ def test_TC_201_1_停止で自動送信される(page):
 
 
 def test_TC_202_1_送信中は録音ボタンが無効(page):
-    def slow(route):
-        time.sleep(1.0)
-        route.continue_()
-
-    page.route("**/api/analyze", slow)
+    held = hold_requests(page, "**/api/analyze")
     page.click("#rec")
     page.wait_for_timeout(1500)
     page.click("#rec")
+    wait_held(page, held)
+    page.wait_for_timeout(500)
     expect(page.locator("#rec")).to_be_disabled()
-    expect(page.locator("#rec")).to_be_enabled(timeout=10000)
+    with page.expect_response("**/api/analyze"):
+        held[0].continue_()
+    expect(page.locator("#rec")).to_be_enabled()
 
 
 def test_TC_203_1_10秒で自動停止する(page):
@@ -217,6 +238,20 @@ def test_TC_204_1_再録音でidが差し替わる(page):
 
 
 def test_TC_205_1_未分解では再生ボタンが無効(page):
+    expect(page.locator("#play-orig")).to_be_disabled()
+    expect(page.locator("#play-mod")).to_be_disabled()
+
+
+def test_TC_205_2_録音中と分解失敗後も再生ボタンが無効(page):
+    page.route("**/api/analyze", lambda r: r.fulfill(
+        status=400, content_type="application/json", body=json.dumps({"detail": "too short"})))
+    page.click("#rec")
+    expect(page.locator("#rec")).to_have_attribute("data-state", "recording")
+    expect(page.locator("#play-orig")).to_be_disabled()
+    expect(page.locator("#play-mod")).to_be_disabled()
+    page.wait_for_timeout(1200)
+    page.click("#rec")
+    expect(page.locator("#error")).to_contain_text("too short")
     expect(page.locator("#play-orig")).to_be_disabled()
     expect(page.locator("#play-mod")).to_be_disabled()
 
@@ -248,10 +283,9 @@ def test_TC_211_1_横軸は対数スケール(page):
 
 
 def test_TC_212_1_縦軸は最大値プラス5から70dB幅(page):
+    # 分解直後に取得される最初の包絡（record() はそれが描画されるまで待つ）
     with page.expect_response("**/api/envelope") as resp:
         record(page)
-    # 分解直後の描画に使われた最後の包絡
-    page.wait_for_timeout(500)
     env = resp.value.json()
     freq = np.array(env["freq"])
     top = float(np.max(np.array(env["original_db"])[freq >= 50])) + 5
@@ -305,9 +339,14 @@ def test_TC_223_1_フレーム変更で包絡を取り直す(page):
     page.wait_for_timeout(500)
     page.reqs.clear()
     target = info["voiced_frames"][0]
+    changed_at = time.monotonic()
     set_slider_frame(page, target)
     assert wait_envelope_count(page, 1) == 1
-    assert page.reqs.of("/api/envelope")[0]["body"]["frame"] == target
+    sent = page.reqs.of("/api/envelope")[0]
+    assert sent["t"] - changed_at >= 0.29
+    assert sent["body"]["frame"] == target
+    page.wait_for_timeout(400)
+    assert len(page.reqs.of("/api/envelope")) == 1
 
 
 # ---------------------------------------------------------------- パラメータ
@@ -389,29 +428,50 @@ def test_TC_240_1_加工音ボタンでその時点の値で合成して再生(p
     record(page)
     set_slider(page, "formant", 1.3)
     page.click("#play-mod")
-    wait_playing(page, "processed")
+    assert wait_playing(page, "processed") < 0.5
     body = page.reqs.of("/api/synthesize")[-1]["body"]
     assert body["params"]["formant"] == pytest.approx(1.3)
 
 
+def test_TC_240_2_加工音の再押下は先頭から(page):
+    record(page)
+    page.click("#play-mod")
+    wait_playing(page, "processed")
+    page.wait_for_timeout(800)
+    assert page.evaluate("document.querySelector('#player').currentTime") > 0.5
+    page.click("#play-mod")
+    page.wait_for_function("() => document.querySelector('#player').currentTime < 0.5", polling=20)
+    assert wait_playing(page, "processed") < 0.5
+
+
 def test_TC_241_1_合成待ちはローディング表示(page):
     record(page)
-
-    def slow(route):
-        time.sleep(1.0)
-        route.continue_()
-
-    page.route("**/api/synthesize", slow)
+    held = hold_requests(page, "**/api/synthesize")
     page.click("#play-mod")
+    wait_held(page, held)
+    page.wait_for_timeout(500)
     expect(page.locator("#play-mod")).to_have_attribute("aria-busy", "true")
-    expect(page.locator("#play-mod")).not_to_have_attribute("aria-busy", "true", timeout=10000)
+    with page.expect_response("**/api/synthesize"):
+        held[0].continue_()
+    expect(page.locator("#play-mod")).not_to_have_attribute("aria-busy", "true")
 
 
 def test_TC_242_1_元音ボタンで元音を再生(page):
     info = record(page)
     page.click("#play-orig")
-    wait_playing(page, "original")
+    assert wait_playing(page, "original") < 0.5
     assert page.get_attribute("#player", "src").endswith(f"/api/original/{info['id']}")
+
+
+def test_TC_242_2_元音の再押下は先頭から(page):
+    record(page)
+    page.click("#play-orig")
+    wait_playing(page, "original")
+    page.wait_for_timeout(800)
+    assert page.evaluate("document.querySelector('#player').currentTime") > 0.5
+    page.click("#play-orig")
+    page.wait_for_function("() => document.querySelector('#player').currentTime < 0.5", polling=20)
+    assert wait_playing(page, "original") < 0.5
 
 
 def test_TC_243_1_スペースで元音と加工音が交互に再生される(page):
