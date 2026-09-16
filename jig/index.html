@@ -18,6 +18,7 @@
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
   }
   * { box-sizing: border-box; }
+  input[type=range] { accent-color: var(--accent); }
   body {
     margin: 0;
     background: var(--bg);
@@ -450,6 +451,7 @@ function onAnalyzed(info) {
   state.voiced = new Set(info.voiced_frames);
   state.lastPlayed = null;
   stopPlayback();
+  elapsedEl.textContent = "";
   metaEl.textContent =
     `${info.duration.toFixed(2)} 秒 / ${info.frames} フレーム / 平均 f0 ${info.f0_mean.toFixed(1)} Hz`;
   const v = info.voiced_frames;
