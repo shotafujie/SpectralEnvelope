@@ -151,7 +151,7 @@
 
 ### SPEC-041 original_db の定義
 
-- **TC-041-1** frame = 100 → `original_db` == 10·log10(合成に渡る無加工 sp[100] + 1e-12)（差 1e-6 以内）
+- **TC-041-1** frame = 100 → `original_db` == 10·log10(sp[100] + 1e-12)（差 1e-6 以内）。sp は `/api/original` の WAV をテスト側で harvest + cheaptrick（frame_period 5.0）にかけて独立に求める
 
 ### SPEC-042 無加工なら modified == original
 
@@ -255,6 +255,8 @@
 - **TC-092-2** bands [0, 0, 0, 12] → 4000Hz 付近のビンで式の値と一致、隣接ビン間の差の最大が 12 未満（段差が無い）
 
 ### SPEC-100 pitch で f0 が変わる
+
+再分解は harvest の `f0_floor=40` で行う（既定の 71Hz では pitch 0.5 の約 60Hz を追えずオクターブ誤りになるため）。
 
 - **TC-100-1** 合成母音、pitch 1.5 で合成 → 再分解 f0 中央値 / 元の f0 中央値 が 1.455〜1.545
 - **TC-100-2** pitch 0.5 → 比が 0.485〜0.515
