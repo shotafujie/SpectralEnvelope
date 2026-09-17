@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>包絡いじり治具</title>
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --panel: #fffdf9;
+    --ink: #1f1d1a;
+    --muted: #6f6a62;
+    --line: #d9d4ca;
+    --accent: #c2410c;
+    --accent-ink: #fff;
+    --err-bg: #fdecea;
+    --err-ink: #9b1c1c;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  input[type=range] { accent-color: var(--accent); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 16px;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .02em; }
+  header p { margin: 0; color: var(--muted); font-size: 12px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+  h2 { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 10px; letter-spacing: .06em; }
+  button {
+    font: inherit;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--ink); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #rec { min-width: 96px; font-weight: 600; }
+  #rec[data-state="recording"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  #elapsed, #meta { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+  #error { margin: 10px 0 0; padding: 8px 10px; background: var(--err-bg); color: var(--err-ink); border-radius: 4px; }
+  #error:empty { display: none; }
+  .graph-wrap { overflow-x: auto; }
+  #graph { display: block; width: 100%; min-width: 520px; height: auto; }
+  #graph .grid { stroke: #ebe7df; stroke-width: 1; }
+  #graph .band-line { stroke: var(--accent); stroke-opacity: .25; stroke-width: 1; stroke-dasharray: 3 3; }
+  #graph text { font: 10px var(--mono); fill: var(--muted); }
+  #orig-line { fill: none; stroke: rgb(150, 150, 150); stroke-width: 1.25; }
+  #mod-line { fill: none; stroke: rgb(194, 65, 12); stroke-width: 2.25; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend i { display: inline-block; width: 18px; height: 0; vertical-align: middle; margin-right: 6px; border-top: 2px solid; }
+  .frame-row { margin-top: 10px; }
+  .frame-row input { flex: 1; min-width: 160px; }
+  #unvoiced { color: var(--err-ink); font-size: 12px; }
+  .param { display: grid; grid-template-columns: 76px minmax(0, 1fr) 48px; align-items: center; gap: 8px; margin: 6px 0; }
+  .param label { font-size: 12px; }
+  .param output { font-family: var(--mono); font-size: 12px; text-align: right; }
+  .param input { width: 100%; }
+  .sub { font-size: 11px; color: var(--muted); margin: 12px 0 2px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .presets button { padding: 4px 10px; font-size: 12px; }
+  .play { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .play button { padding: 10px; font-weight: 600; }
+  #play-mod { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  #play-mod[aria-busy="true"] { opacity: .7; cursor: progress; }
+  .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  kbd { font-family: var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #fff; }
+  .side { display: flex; flex-direction: column; gap: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>包絡いじり治具</h1>
+    <p>録音 → WORLD で分解 → sp だけ加工 → 元の f0・ap で再合成</p>
+  </header>
+
+  <div class="side" style="grid-column: 1">
+    <section>
+      <div class="row">
+        <button id="rec" type="button" data-state="idle">● 録音</button>
+        <span id="elapsed"></span>
+        <span id="meta"></span>
+      </div>
+      <p id="error" role="alert"></p>
+    </section>
+
+    <section>
+      <h2>スペクトル包絡</h2>
+      <div class="graph-wrap">
+        <svg id="graph" viewBox="0 0 800 380" role="img" aria-label="元の包絡と加工後の包絡"></svg>
+      </div>
+      <div class="legend"><span><i style="border-color: rgb(150,150,150)"></i>元の包絡</span><span><i style="border-color: rgb(194,65,12); border-top-width: 3px"></i>加工後</span></div>
+      <div class="row frame-row">
+        <label for="frame">フレーム</label>
+        <input id="frame" type="range" min="0" max="0" step="1" value="0" disabled>
+        <output id="frame-value">—</output>
+        <span id="unvoiced" hidden>無声フレームです（f0 = 0）</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="side" style="grid-column: auto">
+    <section>
+      <h2>再生・比較</h2>
+      <div class="play">
+        <button id="play-orig" type="button" disabled>元音</button>
+        <button id="play-mod" type="button" disabled>加工音</button>
+      </div>
+      <p class="hint"><kbd>Space</kbd> で元音と加工音を交互に再生</p>
+      <audio id="player" preload="auto"></audio>
+    </section>
+
+    <section>
+      <h2>パラメータ</h2>
+      <div id="params"></div>
+      <div class="row" style="margin-top: 10px">
+        <button id="reset" type="button">すべてリセット</button>
+      </div>
+      <p class="hint">スライダーをダブルクリックで初期値</p>
+    </section>
+
+    <section>
+      <h2>プリセット</h2>
+      <div class="presets" id="presets"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+const PARAMS = [
+  { name: "formant", label: "formant", min: 0.6, max: 1.6, step: 0.01, init: 1.0, digits: 2 },
+  { name: "tilt", label: "tilt dB/oct", min: -12, max: 12, step: 0.1, init: 0, digits: 1 },
+  { name: "band0", label: "〜500Hz", min: -12, max: 12, step: 0.1, init: 0, digits: 1, group: "バンドゲイン dB" },
+  { name: "band1", label: "〜1.5kHz", min: -12, max: 12, step: 0.1, init: 0, digits: 1 },
+  { name: "band2", label: "〜4kHz", min: -12, max: 12, step: 0.1, init: 0, digits: 1 },
+  { name: "band3", label: "4kHz〜", min: -12, max: 12, step: 0.1, init: 0, digits: 1 },
+  { name: "smooth", label: "smooth", min: 0, max: 80, step: 1, init: 0, digits: 0, group: "平滑化・ピッチ" },
+  { name: "pitch", label: "pitch ×", min: 0.5, max: 2.0, step: 0.01, init: 1.0, digits: 2 },
+];
+
+const PRESETS = [
+  ["素通し", {}],
+  ["子供っぽく", { formant: 1.25, pitch: 1.15 }],
+  ["太く", { formant: 0.85, tilt: -3.0 }],
+  ["こもる", { band0: 4, band1: 0, band2: -6, band3: -10 }],
+  ["のっぺり", { smooth: 16 }],
+];
+
+const MAX_RECORD_MS = 10000;
+const DEBOUNCE_MS = 300;
+const NYQUIST = 22050;
+const F_MIN = 50;
+const Y_RANGE = 70;
+const BAND_FREQS = [500, 1500, 4000];
+const PLOT = { left: 56, right: 784, top: 12, bottom: 348 };
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const $ = (sel) => document.querySelector(sel);
+const recBtn = $("#rec");
+const elapsedEl = $("#elapsed");
+const metaEl = $("#meta");
+const errorEl = $("#error");
+const graph = $("#graph");
+const frameInput = $("#frame");
+const frameValue = $("#frame-value");
+const unvoicedEl = $("#unvoiced");
+const playOrigBtn = $("#play-orig");
+const playModBtn = $("#play-mod");
+const player = $("#player");
+
+const state = {
+  info: null,          // /api/analyze の応答
+  voiced: new Set(),
+  lastPlayed: null,    // "original" | "processed" | null
+  playToken: 0,
+  envelopeSeq: 0,
+  debounceTimer: null,
+  blobUrl: null,
+  recorder: null,
+};
+
+// ---------------------------------------------------------------- エラー表示
+
+function showError(message) { errorEl.textContent = message; }
+function clearError() { errorEl.textContent = ""; }
+
+async function apiError(res) {
+  let detail = `${res.status} ${res.statusText}`;
+  try {
+    const body = await res.json();
+    if (typeof body.detail === "string") detail = body.detail;
+    else if (body.detail) detail = JSON.stringify(body.detail);
+  } catch (_) { /* JSON でない応答はステータスだけ出す */ }
+  return new Error(`サーバーエラー: ${detail}`);
+}
+
+async function postJson(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw await apiError(res);
+  return res;
+}
+
+// ---------------------------------------------------------------- パラメータ
+
+const sliders = {};
+
+function formatValue(p, v) { return Number(v).toFixed(p.digits); }
+
+function buildParams() {
+  const box = $("#params");
+  for (const p of PARAMS) {
+    if (p.group) {
+      const g = document.createElement("div");
+      g.className = "sub";
+      g.textContent = p.group;
+      box.append(g);
+    }
+    const row = document.createElement("div");
+    row.className = "param";
+    row.innerHTML =
+      `<label for="p-${p.name}">${p.label}</label>` +
+      `<input id="p-${p.name}" name="${p.name}" type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.init}">` +
+      `<output id="${p.name}-value">${formatValue(p, p.init)}</output>`;
+    box.append(row);
+    const input = row.querySelector("input");
+    const out = row.querySelector("output");
+    sliders[p.name] = { p, input, out };
+    input.addEventListener("input", () => { out.textContent = formatValue(p, input.value); scheduleEnvelope(); });
+    input.addEventListener("dblclick", () => setParam(p.name, p.init));
+  }
+}
+
+function setParam(name, value) {
+  const s = sliders[name];
+  s.input.value = value;
+  s.out.textContent = formatValue(s.p, s.input.value);
+  scheduleEnvelope();
+}
+
+function setAllParams(values) {
+  for (const p of PARAMS) setParam(p.name, values[p.name] ?? p.init);
+}
+
+function currentParams() {
+  const v = (n) => Number(sliders[n].input.value);
+  return {
+    formant: v("formant"),
+    tilt: v("tilt"),
+    bands: [v("band0"), v("band1"), v("band2"), v("band3")],
+    smooth: v("smooth"),
+    pitch: v("pitch"),
+  };
+}
+
+function buildPresets() {
+  const box = $("#presets");
+  for (const [name, values] of PRESETS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.preset = name;
+    b.textContent = name;
+    b.addEventListener("click", () => setAllParams(values));
+    box.append(b);
+  }
+  $("#reset").addEventListener("click", () => setAllParams({}));
+}
+
+// ---------------------------------------------------------------- 包絡グラフ
+
+const xOf = (f) => PLOT.left + (PLOT.right - PLOT.left) * Math.log(f / F_MIN) / Math.log(NYQUIST / F_MIN);
+
+function svg(tag, attrs, parent) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  if (parent) parent.append(el);
+  return el;
+}
+
+function drawFrame() {
+  graph.replaceChildren();
+  graph.dataset.plotLeft = PLOT.left;
+  graph.dataset.plotRight = PLOT.right;
+  for (const f of [100, 200, 500, 1000, 2000, 5000, 10000, 20000]) {
+    svg("line", { class: "grid", x1: xOf(f), x2: xOf(f), y1: PLOT.top, y2: PLOT.bottom }, graph);
+    svg("text", { x: xOf(f), y: PLOT.bottom + 16, "text-anchor": "middle" }, graph)
+      .textContent = f >= 1000 ? `${f / 1000}k` : String(f);
+  }
+  for (const f of BAND_FREQS) {
+    svg("line", { class: "band-line", "data-freq": f, x1: xOf(f), x2: xOf(f), y1: PLOT.top, y2: PLOT.bottom }, graph);
+  }
+  svg("g", { id: "y-grid" }, graph);
+  svg("path", { id: "orig-line", d: "" }, graph);
+  svg("path", { id: "mod-line", d: "" }, graph);
+}
+
+function drawEnvelope(env) {
+  const { freq, original_db: orig, modified_db: mod } = env;
+  let top = -Infinity;
+  for (let k = 0; k < freq.length; k++) if (freq[k] >= F_MIN) top = Math.max(top, orig[k]);
+  top += 5;
+  const bottom = top - Y_RANGE;
+  graph.dataset.ymax = top;
+  graph.dataset.ymin = bottom;
+
+  const yOf = (db) => {
+    const c = Math.min(Math.max(db, bottom), top);
+    return PLOT.top + (PLOT.bottom - PLOT.top) * (top - c) / Y_RANGE;
+  };
+  const path = (values) => {
+    const parts = [];
+    for (let k = 0; k < freq.length; k++) {
+      if (freq[k] < F_MIN) continue;
+      parts.push(`${parts.length ? "L" : "M"}${xOf(freq[k]).toFixed(1)},${yOf(values[k]).toFixed(1)}`);
+    }
+    return parts.join("");
+  };
+
+  const yGrid = graph.querySelector("#y-grid");
+  yGrid.replaceChildren();
+  for (let db = Math.ceil(bottom / 10) * 10; db <= top; db += 10) {
+    svg("line", { class: "grid", x1: PLOT.left, x2: PLOT.right, y1: yOf(db), y2: yOf(db) }, yGrid);
+    svg("text", { x: PLOT.left - 6, y: yOf(db) + 3, "text-anchor": "end" }, yGrid).textContent = `${db}`;
+  }
+  graph.querySelector("#orig-line").setAttribute("d", path(orig));
+  graph.querySelector("#mod-line").setAttribute("d", path(mod));
+}
+
+async function refreshEnvelope() {
+  if (!state.info) return;
+  const seq = ++state.envelopeSeq;
+  const id = state.info.id;
+  try {
+    const res = await postJson("/api/envelope", {
+      id, frame: Number(frameInput.value), params: currentParams(),
+    });
+    const env = await res.json();
+    if (seq !== state.envelopeSeq) return;  // 古い応答は捨てる
+    drawEnvelope(env);
+    graph.dataset.id = id;
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+function scheduleEnvelope() {
+  if (!state.info) return;
+  clearTimeout(state.debounceTimer);
+  state.debounceTimer = setTimeout(refreshEnvelope, DEBOUNCE_MS);
+}
+
+// ---------------------------------------------------------------- フレーム選択
+
+function updateFrameLabel() {
+  const f = Number(frameInput.value);
+  frameValue.textContent = `${f}（${(f * 5 / 1000).toFixed(3)} 秒）`;
+  unvoicedEl.hidden = state.voiced.has(f);
+}
+
+frameInput.addEventListener("input", () => { updateFrameLabel(); scheduleEnvelope(); });
+
+// ---------------------------------------------------------------- 録音・分解
+
+function setRecording(on) {
+  recBtn.dataset.state = on ? "recording" : "idle";
+  recBtn.textContent = on ? "■ 停止" : "● 録音";
+}
+
+async function startRecording() {
+  clearError();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    showError(`マイクを使えませんでした: ${e.message || e.name}`);
+    return;
+  }
+  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  const chunks = [];
+  const started = performance.now();
+  const ticker = setInterval(() => {
+    elapsedEl.textContent = `${((performance.now() - started) / 1000).toFixed(1)} 秒`;
+  }, 100);
+  const limit = setTimeout(() => stopRecording(), MAX_RECORD_MS);
+
+  recorder.addEventListener("dataavailable", (e) => { if (e.data.size) chunks.push(e.data); });
+  recorder.addEventListener("stop", () => {
+    clearInterval(ticker);
+    clearTimeout(limit);
+    stream.getTracks().forEach((t) => t.stop());
+    setRecording(false);
+    analyze(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+  });
+  state.recorder = recorder;
+  recorder.start();
+  elapsedEl.textContent = "0.0 秒";
+  setRecording(true);
+}
+
+function stopRecording() {
+  const r = state.recorder;
+  state.recorder = null;
+  if (r && r.state !== "inactive") {
+    recBtn.disabled = true;  // stop イベント → 送信完了まで押せない
+    r.stop();
+  }
+}
+
+async function analyze(blob) {
+  recBtn.disabled = true;
+  metaEl.textContent = "分解中…";
+  try {
+    const form = new FormData();
+    form.append("audio", blob, "recording.webm");
+    const res = await fetch("/api/analyze", { method: "POST", body: form });
+    if (!res.ok) throw await apiError(res);
+    onAnalyzed(await res.json());
+  } catch (e) {
+    metaEl.textContent = "";
+    showError(e.message);
+  } finally {
+    recBtn.disabled = false;
+  }
+}
+
+function onAnalyzed(info) {
+  state.info = info;
+  state.voiced = new Set(info.voiced_frames);
+  state.lastPlayed = null;
+  stopPlayback();
+  elapsedEl.textContent = "";
+  metaEl.textContent =
+    `${info.duration.toFixed(2)} 秒 / ${info.frames} フレーム / 平均 f0 ${info.f0_mean.toFixed(1)} Hz`;
+  const v = info.voiced_frames;
+  frameInput.max = info.frames - 1;
+  frameInput.value = v.length ? v[Math.floor(v.length / 2)] : 0;
+  frameInput.disabled = false;
+  playOrigBtn.disabled = false;
+  playModBtn.disabled = false;
+  updateFrameLabel();
+  clearTimeout(state.debounceTimer);
+  refreshEnvelope();
+}
+
+recBtn.addEventListener("click", () => {
+  if (state.recorder) stopRecording();
+  else startRecording();
+});
+
+// ---------------------------------------------------------------- 再生
+
+function stopPlayback() {
+  player.pause();
+  state.playToken++;
+}
+
+function startPlayer(src, source) {
+  player.src = src;
+  player.dataset.source = source;
+  player.currentTime = 0;
+  player.play().catch((e) => { if (e.name !== "AbortError") showError(`再生できませんでした: ${e.message}`); });
+}
+
+function playOriginal() {
+  if (!state.info) return;
+  clearError();
+  stopPlayback();
+  state.lastPlayed = "original";
+  startPlayer(`/api/original/${state.info.id}`, "original");
+}
+
+async function playProcessed() {
+  if (!state.info) return;
+  clearError();
+  stopPlayback();
+  state.lastPlayed = "processed";
+  const token = state.playToken;
+  playModBtn.setAttribute("aria-busy", "true");
+  playModBtn.textContent = "合成中…";
+  try {
+    const res = await postJson("/api/synthesize", { id: state.info.id, params: currentParams() });
+    const blob = await res.blob();
+    if (token !== state.playToken) return;  // 待っている間に別の再生が始まった
+    if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
+    state.blobUrl = URL.createObjectURL(blob);
+    startPlayer(state.blobUrl, "processed");
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    playModBtn.removeAttribute("aria-busy");
+    playModBtn.textContent = "加工音";
+  }
+}
+
+playOrigBtn.addEventListener("click", playOriginal);
+playModBtn.addEventListener("click", playProcessed);
+
+// Space は A/B 切り替え専用。フォーカス中のボタン押下やスクロールを起こさない。
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space") return;
+  e.preventDefault();
+  if (e.repeat || !state.info) return;
+  if (state.lastPlayed === "original") playProcessed();
+  else playOriginal();
+}, true);
+document.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); }, true);
+
+// ---------------------------------------------------------------- 起動
+
+buildParams();
+buildPresets();
+drawFrame();
+</script>
+</body>
+</html>
