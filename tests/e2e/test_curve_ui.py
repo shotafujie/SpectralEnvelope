@@ -139,13 +139,16 @@ def test_TC_518_1_ダブルクリックで0(page):
     assert float(h.get_attribute("cy")) == pytest.approx(center(page), abs=0.01)
 
 
-@pytest.mark.parametrize("action", ["#reset", "button[data-preset='こもる']"])
-def test_TC_519_1_TC_519_2_リセットとプリセットで全点0(page, action):
-    for j, g in [(2, 4.0), (9, -6.0), (17, 8.0)]:
-        drag_handle(page, j, gain=g)
-    assert sum(1 for g in curve_gains(page) if g != 0) == 3
-    page.click(action)
-    assert curve_gains(page) == [0] * 20
+PRESETS = ("素通し", "子供っぽく", "太く", "こもる", "のっぺり")
+
+
+def test_TC_519_1_TC_519_2_リセットとプリセットで全点0(page):
+    for action in ["#reset", *(f"button[data-preset='{n}']" for n in PRESETS)]:
+        for j, g in [(2, 4.0), (9, -6.0), (17, 8.0)]:
+            drag_handle(page, j, gain=g)
+        assert sum(1 for g in curve_gains(page) if g != 0) == 3
+        page.click(action)
+        assert curve_gains(page) == [0] * 20, action
 
 
 def test_TC_520_1_分解前でも操作できる(page):

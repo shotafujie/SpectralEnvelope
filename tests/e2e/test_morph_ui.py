@@ -31,9 +31,9 @@ def test_TC_420_1_選択欄のラベル(page, two):
     par = options(page, "#partner")
     assert [o["value"] for o in cur] == [a["id"], b["id"]]
     assert [o["value"] for o in par] == ["", a["id"], b["id"]]
-    for text in ("#1", "録音", "秒"):
+    for text in ("#1", "録音", f"{a['duration']:.2f} 秒"):
         assert text in cur[0]["label"]
-    for text in ("#2", "voice.wav", "秒"):
+    for text in ("#2", "voice.wav", "3.00 秒"):
         assert text in cur[1]["label"]
     assert par[1]["label"] == cur[0]["label"]
 
@@ -57,6 +57,21 @@ def test_TC_422_1_現在の録音を切り替えるとグラフとフレーム�
     v = a["voiced_frames"]
     assert page.get_attribute("#frame", "max") == str(a["frames"] - 1)
     assert page.input_value("#frame") == str(v[len(v) // 2])
+
+
+def test_TC_422_3_切り替えると無声表示も切り替わる(page, two):
+    a, b = two
+    page.select_option("#current", a["id"])
+    page.wait_for_function("id => document.querySelector('#graph').dataset.id === id", arg=a["id"])
+    voiced = set(a["voiced_frames"])
+    unvoiced = next(i for i in range(a["frames"]) if i not in voiced)
+    set_slider_frame(page, unvoiced)
+    expect(page.locator("#unvoiced")).to_be_visible()
+    assert len(b["voiced_frames"]) == b["frames"]
+    page.select_option("#current", b["id"])
+    expect(page.locator("#unvoiced")).to_be_hidden()
+    mid = b["voiced_frames"][len(b["voiced_frames"]) // 2]
+    assert page.inner_text("#frame-value").startswith(str(mid))
 
 
 def test_TC_422_2_切り替え後のAPIと元音は選んだ録音(page, two):
@@ -157,14 +172,17 @@ def test_TC_427_2_相手なしに戻すと消える(page, two):
     expect(page.locator("#partner-line")).to_be_hidden()
 
 
-@pytest.mark.parametrize("action", ["#reset", "button[data-preset='太く']"])
-def test_TC_428_1_TC_428_2_リセットとプリセットはmixだけ戻す(page, two, action):
+PRESET_BUTTONS = [f"button[data-preset='{n}']" for n in ("素通し", "子供っぽく", "太く", "こもる", "のっぺり")]
+
+
+def test_TC_428_1_TC_428_2_リセットとプリセットはmixだけ戻す(page, two):
     a, _ = two
     select_partner(page, a["id"])
-    set_slider(page, "mix", 0.5)
-    page.click(action)
-    assert page.input_value("input[name=mix]") == "0"
-    assert page.input_value("#partner") == a["id"]
+    for action in ["#reset", *PRESET_BUTTONS]:
+        set_slider(page, "mix", 0.5)
+        page.click(action)
+        assert page.input_value("input[name=mix]") == "0", action
+        assert page.input_value("#partner") == a["id"], action
 
 
 def test_TC_429_1_mixのダブルクリックで0(page):
