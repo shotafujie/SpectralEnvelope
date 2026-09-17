@@ -357,3 +357,13 @@ $ ~/dev/.claude/hooks/trace-check.sh docs/items/001-envelope-jig
 10. 実行時に警告が 2 件出た。判定には影響しない。
     - Starlette/httpx の DeprecationWarning
     - anyio の BlockingPortal の DeprecationWarning
+
+## 受け入れ試聴の記録（検証後の追記）
+
+verifier のレポートの後に、ユーザーが実機で試聴した結果を追記する。上の判定表は書き換えていない。
+
+| 項目 | 結果 | 日付 | 条件 |
+|------|------|------|------|
+| M1: 元音と無加工再合成音の差が聴き分けられない | 合格（差は分からなかった） | 2026-09-18 | ユーザー本人の声、Chrome、`main` の 3a1496a |
+| M2: 母音でピーク位置が変わる | 未報告 | — | — |
+| M3: formant でピークと声質が同方向に変わる | 未報告 | — | — |
