@@ -62,6 +62,14 @@
   #graph .band-line { stroke: var(--accent); stroke-opacity: .25; stroke-width: 1; stroke-dasharray: 3 3; }
   #graph text { font: 10px var(--mono); fill: var(--muted); }
   #orig-line { fill: none; stroke: rgb(150, 150, 150); stroke-width: 1.25; }
+  #partner-line { fill: none; stroke: rgb(37, 99, 235); stroke-width: 1.25; stroke-dasharray: 5 3; }
+  #curve-zero { stroke: rgb(21, 128, 61); stroke-opacity: .25; stroke-width: 1; }
+  #curve-line { fill: none; stroke: rgb(21, 128, 61); stroke-width: 1.5; stroke-opacity: .8; }
+  .curve-point { fill: rgb(21, 128, 61); stroke: #fff; stroke-width: 1.5; cursor: ns-resize; touch-action: none; }
+  .curve-point:hover, .curve-point.active { fill: rgb(22, 163, 74); }
+  #curve-readout { font-family: var(--mono); font-size: 12px; color: rgb(21, 128, 61); }
+  select { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; min-width: 0; width: 100%; }
+  .field { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
   #mod-line { fill: none; stroke: rgb(194, 65, 12); stroke-width: 2.25; }
   .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 6px; }
   .legend i { display: inline-block; width: 18px; height: 0; vertical-align: middle; margin-right: 6px; border-top: 2px solid; }
@@ -95,6 +103,8 @@
     <section>
       <div class="row">
         <button id="rec" type="button" data-state="idle">● 録音</button>
+        <button id="open-file" type="button">ファイルを開く</button>
+        <input id="file" type="file" accept="audio/*,.wav" hidden>
         <span id="elapsed"></span>
         <span id="meta"></span>
       </div>
@@ -106,7 +116,7 @@
       <div class="graph-wrap">
         <svg id="graph" viewBox="0 0 800 380" role="img" aria-label="元の包絡と加工後の包絡"></svg>
       </div>
-      <div class="legend"><span><i style="border-color: rgb(150,150,150)"></i>元の包絡</span><span><i style="border-color: rgb(194,65,12); border-top-width: 3px"></i>加工後</span></div>
+      <div class="legend"><span><i style="border-color: rgb(150,150,150)"></i>元の包絡</span><span><i style="border-color: rgb(194,65,12); border-top-width: 3px"></i>加工後</span><span><i style="border-color: rgb(37,99,235); border-top-style: dashed"></i>混ぜる相手</span><span><i style="border-color: rgb(21,128,61)"></i>ゲインカーブ（点を上下にドラッグ）</span><span id="curve-readout" hidden></span></div>
       <div class="row frame-row">
         <label for="frame">フレーム</label>
         <input id="frame" type="range" min="0" max="0" step="1" value="0" disabled>
@@ -125,6 +135,18 @@
       </div>
       <p class="hint"><kbd>Space</kbd> で元音と加工音を交互に再生</p>
       <audio id="player" preload="auto"></audio>
+    </section>
+
+    <section>
+      <h2>録音の選択・モーフィング</h2>
+      <div class="field"><label for="current">現在の録音</label><select id="current"></select></div>
+      <div class="field"><label for="partner">混ぜる相手</label><select id="partner"><option value="">なし</option></select></div>
+      <div class="param">
+        <label for="p-mix">mix</label>
+        <input id="p-mix" name="mix" type="range" min="0" max="1" step="0.01" value="0">
+        <output id="mix-value">0.00</output>
+      </div>
+      <p class="hint">相手の包絡を mix の比率で混ぜる（f0・ap は現在の録音のまま）</p>
     </section>
 
     <section>
@@ -173,6 +195,9 @@ const Y_RANGE = 70;
 const BAND_FREQS = [500, 1500, 4000];
 const PLOT = { left: 56, right: 784, top: 12, bottom: 348 };
 const SVG_NS = "http://www.w3.org/2000/svg";
+const MAX_HISTORY = 10;
+const CURVE_FREQS = Array.from({ length: 20 }, (_, j) => 50 * 400 ** (j / 19));
+const CURVE_LIMIT = 12;
 
 const $ = (sel) => document.querySelector(sel);
 const recBtn = $("#rec");
@@ -186,6 +211,13 @@ const unvoicedEl = $("#unvoiced");
 const playOrigBtn = $("#play-orig");
 const playModBtn = $("#play-mod");
 const player = $("#player");
+const openFileBtn = $("#open-file");
+const fileInput = $("#file");
+const currentSel = $("#current");
+const partnerSel = $("#partner");
+const mixInput = $("#p-mix");
+const mixValue = $("#mix-value");
+const curveReadout = $("#curve-readout");
 
 const state = {
   info: null,          // /api/analyze の応答
@@ -196,6 +228,10 @@ const state = {
   debounceTimer: null,
   blobUrl: null,
   recorder: null,
+  history: [],         // {info, label}（分解順、最大 MAX_HISTORY 件）
+  analyzedCount: 0,
+  curve: new Array(20).fill(0),
+  dragging: null,      // ドラッグ中の制御点番号
 };
 
 // ---------------------------------------------------------------- エラー表示
@@ -262,7 +298,19 @@ function setParam(name, value) {
 
 function setAllParams(values) {
   for (const p of PARAMS) setParam(p.name, values[p.name] ?? p.init);
+  setMix(0);
+  for (let j = 0; j < state.curve.length; j++) setCurvePoint(j, 0);
 }
+
+function setMix(value) {
+  mixInput.value = value;
+  mixValue.textContent = Number(mixInput.value).toFixed(2);
+  scheduleEnvelope();
+}
+
+mixInput.addEventListener("input", () => setMix(mixInput.value));
+mixInput.addEventListener("dblclick", () => setMix(0));
+partnerSel.addEventListener("change", scheduleEnvelope);
 
 function currentParams() {
   const v = (n) => Number(sliders[n].input.value);
@@ -272,6 +320,8 @@ function currentParams() {
     bands: [v("band0"), v("band1"), v("band2"), v("band3")],
     smooth: v("smooth"),
     pitch: v("pitch"),
+    curve: [...state.curve],
+    ...(partnerSel.value ? { morph: { id: partnerSel.value, ratio: Number(mixInput.value) } } : {}),
   };
 }
 
@@ -299,10 +349,16 @@ function svg(tag, attrs, parent) {
   return el;
 }
 
+const MID_Y = (PLOT.top + PLOT.bottom) / 2;
+const PX_PER_DB = (PLOT.bottom - PLOT.top) / Y_RANGE;
+const curveY = (g) => (MID_Y - g * PX_PER_DB).toFixed(2);
+
 function drawFrame() {
   graph.replaceChildren();
   graph.dataset.plotLeft = PLOT.left;
   graph.dataset.plotRight = PLOT.right;
+  graph.dataset.plotTop = PLOT.top;
+  graph.dataset.plotBottom = PLOT.bottom;
   for (const f of [100, 200, 500, 1000, 2000, 5000, 10000, 20000]) {
     svg("line", { class: "grid", x1: xOf(f), x2: xOf(f), y1: PLOT.top, y2: PLOT.bottom }, graph);
     svg("text", { x: xOf(f), y: PLOT.bottom + 16, "text-anchor": "middle" }, graph)
@@ -313,8 +369,80 @@ function drawFrame() {
   }
   svg("g", { id: "y-grid" }, graph);
   svg("path", { id: "orig-line", d: "" }, graph);
+  svg("path", { id: "partner-line", d: "", style: "display: none" }, graph);
   svg("path", { id: "mod-line", d: "" }, graph);
+  svg("line", { id: "curve-zero", x1: PLOT.left, x2: PLOT.right, y1: MID_Y, y2: MID_Y }, graph);
+  svg("path", { id: "curve-line", d: "" }, graph);
+  CURVE_FREQS.forEach((f, j) => {
+    const c = svg("circle", {
+      class: "curve-point", r: 6, cx: xOf(f).toFixed(2), cy: curveY(0), "data-index": j, "data-gain": 0,
+    }, graph);
+    c.addEventListener("pointerdown", (e) => startCurveDrag(e, j));
+    c.addEventListener("dblclick", () => setCurvePoint(j, 0));
+  });
+  drawCurveLine();
 }
+
+// ---------------------------------------------------------------- ゲインカーブ
+
+const curvePoint = (j) => graph.querySelector(`.curve-point[data-index="${j}"]`);
+
+function drawCurveLine() {
+  const pts = CURVE_FREQS.map((_, j) => {
+    const c = curvePoint(j);
+    return `${c.getAttribute("cx")},${c.getAttribute("cy")}`;
+  });
+  graph.querySelector("#curve-line").setAttribute("d", "M" + pts.join("L"));
+}
+
+function setCurvePoint(j, gain) {
+  const g = Math.min(Math.max(Math.round(gain * 10) / 10, -CURVE_LIMIT), CURVE_LIMIT) || 0;
+  const changed = state.curve[j] !== g;
+  state.curve[j] = g;
+  const c = curvePoint(j);
+  c.setAttribute("cy", curveY(g));
+  c.dataset.gain = g;
+  drawCurveLine();
+  if (changed) scheduleEnvelope();
+}
+
+function showCurveReadout(j) {
+  const g = state.curve[j];
+  curveReadout.textContent =
+    `制御点 ${j + 1}: ${Math.round(CURVE_FREQS[j])} Hz / ${g >= 0 ? "+" : ""}${g.toFixed(1)} dB`;
+  curveReadout.hidden = false;
+}
+
+function svgY(clientX, clientY) {
+  const p = graph.createSVGPoint();
+  p.x = clientX;
+  p.y = clientY;
+  return p.matrixTransform(graph.getScreenCTM().inverse()).y;
+}
+
+function startCurveDrag(e, j) {
+  e.preventDefault();
+  state.dragging = j;
+  curvePoint(j).classList.add("active");
+  showCurveReadout(j);
+}
+
+window.addEventListener("pointermove", (e) => {
+  if (state.dragging === null) return;
+  const j = state.dragging;
+  setCurvePoint(j, (MID_Y - svgY(e.clientX, e.clientY)) / PX_PER_DB);
+  showCurveReadout(j);
+});
+
+function endCurveDrag() {
+  if (state.dragging === null) return;
+  curvePoint(state.dragging).classList.remove("active");
+  state.dragging = null;
+  curveReadout.hidden = true;
+}
+
+window.addEventListener("pointerup", endCurveDrag);
+window.addEventListener("pointercancel", endCurveDrag);
 
 function drawEnvelope(env) {
   const { freq, original_db: orig, modified_db: mod } = env;
@@ -345,6 +473,14 @@ function drawEnvelope(env) {
     svg("text", { x: PLOT.left - 6, y: yOf(db) + 3, "text-anchor": "end" }, yGrid).textContent = `${db}`;
   }
   graph.querySelector("#orig-line").setAttribute("d", path(orig));
+  const partnerLine = graph.querySelector("#partner-line");
+  if (env.partner_db) {
+    partnerLine.setAttribute("d", path(env.partner_db));
+    partnerLine.style.display = "";
+  } else {
+    partnerLine.setAttribute("d", "");
+    partnerLine.style.display = "none";
+  }
   graph.querySelector("#mod-line").setAttribute("d", path(mod));
 }
 
@@ -412,9 +548,10 @@ async function startRecording() {
     clearTimeout(limit);
     stream.getTracks().forEach((t) => t.stop());
     setRecording(false);
-    analyze(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+    analyze(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }), "recording.webm", "録音");
   });
   state.recorder = recorder;
+  openFileBtn.disabled = true;
   recorder.start();
   elapsedEl.textContent = "0.0 秒";
   setRecording(true);
@@ -429,24 +566,61 @@ function stopRecording() {
   }
 }
 
-async function analyze(blob) {
+async function analyze(blob, filename, source) {
   recBtn.disabled = true;
+  openFileBtn.disabled = true;
+  const prevMeta = metaEl.textContent;
   metaEl.textContent = "分解中…";
   try {
     const form = new FormData();
-    form.append("audio", blob, "recording.webm");
+    form.append("audio", blob, filename);
     const res = await fetch("/api/analyze", { method: "POST", body: form });
     if (!res.ok) throw await apiError(res);
-    onAnalyzed(await res.json());
+    addToHistory(await res.json(), source);
   } catch (e) {
-    metaEl.textContent = "";
+    metaEl.textContent = state.info ? prevMeta : "";
     showError(e.message);
   } finally {
     recBtn.disabled = false;
+    openFileBtn.disabled = false;
   }
 }
 
-function onAnalyzed(info) {
+openFileBtn.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  fileInput.value = "";  // 同じファイルを続けて選んでも change が発火するように
+  if (!file) return;
+  clearError();
+  analyze(file, file.name, file.name);
+});
+
+function option(value, label) {
+  const o = document.createElement("option");
+  o.value = value;
+  o.textContent = label;
+  return o;
+}
+
+function addToHistory(info, source) {
+  state.analyzedCount += 1;
+  const label = `#${state.analyzedCount} ${source} ${info.duration.toFixed(2)} 秒`;
+  state.history.push({ info, label });
+  while (state.history.length > MAX_HISTORY) state.history.shift();
+  const partner = partnerSel.value;
+  currentSel.replaceChildren(...state.history.map((h) => option(h.info.id, h.label)));
+  partnerSel.replaceChildren(option("", "なし"), ...state.history.map((h) => option(h.info.id, h.label)));
+  partnerSel.value = state.history.some((h) => h.info.id === partner) ? partner : "";
+  currentSel.value = info.id;
+  activate(info);
+}
+
+currentSel.addEventListener("change", () => {
+  const entry = state.history.find((h) => h.info.id === currentSel.value);
+  if (entry) activate(entry.info);
+});
+
+function activate(info) {
   state.info = info;
   state.voiced = new Set(info.voiced_frames);
   state.lastPlayed = null;

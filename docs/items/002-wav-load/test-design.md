@@ -18,7 +18,7 @@
 
 ### SPEC-301 ファイル名付きで送信
 
-- **TC-301-1** `voice.wav` を選ぶ → `/api/analyze` の要求が 1 件、multipart 本文に `name="audio"` と `filename="voice.wav"` を含み、本文にファイルのバイト列を含む
+- **TC-301-1** `voice.wav` を選ぶ → `/api/analyze` の要求が 1 件。送信された FormData のエントリが `audio` 1 件で、ファイル名が `voice.wav`、サイズが元ファイルと同じ。分解結果の元音 WAV のサンプルが元ファイルと一致する（Chromium はファイルを含む multipart 本文を Playwright に渡さないため、FormData はページ内で `fetch` をラップして記録する）
 
 ### SPEC-302 分解完了後の状態
 
