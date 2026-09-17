@@ -11,6 +11,7 @@ import threading
 import warnings
 from collections import OrderedDict
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 
 import numpy as np
@@ -36,10 +37,22 @@ EPS = 1e-12
 DB_TO_LN = np.log(10) / 10  # dB 表示値（10·log10 sp）を log_sp の単位へ
 BAND_EDGES = (500.0, 1500.0, 4000.0)
 CROSSFADE_OCT = 1 / 3
+CURVE_POINTS = 20
+CURVE_FREQS = 50.0 * 400.0 ** (np.arange(CURVE_POINTS) / (CURVE_POINTS - 1))  # 50Hz〜20kHz を対数等間隔
 
 
 def _clamp(v, lo, hi):
     return float(min(max(v, lo), hi))
+
+
+class Morph(BaseModel):
+    id: str
+    ratio: float = 0.0
+
+    @field_validator("ratio")
+    @classmethod
+    def _ratio(cls, v):
+        return _clamp(v, 0.0, 1.0)
 
 
 class Params(BaseModel):
@@ -48,6 +61,10 @@ class Params(BaseModel):
     bands: list[float] = Field(default_factory=lambda: [0.0] * 4, min_length=4, max_length=4)
     smooth: float = 0
     pitch: float = 1.0
+    curve: list[float] = Field(
+        default_factory=lambda: [0.0] * CURVE_POINTS, min_length=CURVE_POINTS, max_length=CURVE_POINTS
+    )
+    morph: Morph | None = None
 
     @field_validator("formant")
     @classmethod
@@ -63,6 +80,11 @@ class Params(BaseModel):
     @classmethod
     def _bands(cls, v):
         return [_clamp(b, -12.0, 12.0) for b in v]
+
+    @field_validator("curve")
+    @classmethod
+    def _curve(cls, v):
+        return [_clamp(c, -12.0, 12.0) for c in v]
 
     @field_validator("pitch")
     @classmethod
@@ -83,6 +105,25 @@ def freq_axis(fs=FS, fft_size=FFT_SIZE):
 
 
 # ---------------------------------------------------------------- 包絡の加工（log_sp 上）
+
+
+def stretch_partner(log_b, n_a, rows=None):
+    """相手 B の log_sp を A のフレーム数 n_a に線形伸縮し、rows 行目（既定は全行）を返す。"""
+    rows = np.arange(n_a) if rows is None else np.asarray(rows)
+    n_b = len(log_b)
+    pos = rows * (n_b - 1) / (n_a - 1) if n_a > 1 else np.zeros(len(rows))
+    lo = np.floor(pos).astype(int)
+    hi = np.minimum(lo + 1, n_b - 1)
+    w = (pos - lo)[:, None]
+    return (1 - w) * log_b[lo] + w * log_b[hi]
+
+
+def mix_log_sp(log_a, partner, ratio):
+    return (1 - ratio) * log_a + ratio * partner
+
+
+def morph_log_sp(log_a, log_b, ratio):
+    return mix_log_sp(log_a, stretch_partner(log_b, len(log_a)), ratio)
 
 
 def shift_formant(log_sp, r):
@@ -120,14 +161,28 @@ def apply_bands(log_sp, freq, bands):
     return log_sp + band_gain_db(freq, bands) * DB_TO_LN
 
 
-def apply_params(sp, params, fs=FS):
-    """SPEC-110: formant → smooth → tilt → bands の固定順で sp を加工する。"""
+def curve_gain_db(freq, curve):
+    return np.interp(np.log2(np.maximum(freq, 1e-9)), np.log2(CURVE_FREQS), curve)
+
+
+def apply_curve(log_sp, freq, curve):
+    return log_sp + curve_gain_db(freq, curve) * DB_TO_LN
+
+
+def apply_params(sp, params, partner=None, fs=FS):
+    """morph → formant → smooth → tilt → bands → curve の固定順で sp を加工する。
+
+    partner は sp と同じ形に伸縮済みの相手の log_sp。params.morph があるときだけ使う。
+    """
     freq = freq_axis(fs, (sp.shape[1] - 1) * 2)
     log_sp = np.log(sp + EPS)
+    if params.morph is not None and partner is not None:
+        log_sp = mix_log_sp(log_sp, partner, params.morph.ratio)
     log_sp = shift_formant(log_sp, params.formant)
     log_sp = smooth_envelope(log_sp, params.smooth)
     log_sp = apply_tilt(log_sp, freq, params.tilt)
     log_sp = apply_bands(log_sp, freq, params.bands)
+    log_sp = apply_curve(log_sp, freq, params.curve)
     return np.exp(log_sp)
 
 
@@ -175,6 +230,10 @@ class Analysis:
     original_wav: bytes
     n_samples: int
 
+    @cached_property
+    def log_sp(self):
+        return np.log(self.sp + EPS)
+
 
 class Store:
     def __init__(self, limit=MAX_ENTRIES):
@@ -207,8 +266,11 @@ def analyze_signal(x):
     return f0, sp, ap
 
 
-def synthesize(item, params):
-    sp = apply_params(item.sp, params)
+def synthesize(item, params, partner_item=None):
+    partner = None
+    if partner_item is not None:
+        partner = stretch_partner(partner_item.log_sp, len(item.f0))
+    sp = apply_params(item.sp, params, partner=partner)
     f0 = item.f0 * params.pitch
     y = pyworld.synthesize(f0, sp, item.ap, FS, FRAME_PERIOD)[: item.n_samples]
     if len(y) < item.n_samples:
@@ -268,19 +330,27 @@ def create_app():
     @app.post("/api/synthesize")
     def synthesize_endpoint(req: SynthesizeRequest):
         item = store.get(req.id)
-        return wav_response(to_wav_bytes(synthesize(item, req.params or Params())))
+        params = req.params or Params()
+        partner_item = store.get(params.morph.id) if params.morph else None
+        return wav_response(to_wav_bytes(synthesize(item, params, partner_item)))
 
     @app.post("/api/envelope")
     def envelope(req: EnvelopeRequest):
         item = store.get(req.id)
         if not 0 <= req.frame < len(item.f0):
             raise HTTPException(400, f"frame は 0〜{len(item.f0) - 1} の範囲で指定してください")
+        params = req.params or Params()
+        partner = None
+        if params.morph is not None:
+            partner_item = store.get(params.morph.id)
+            partner = stretch_partner(partner_item.log_sp, len(item.f0), rows=[req.frame])
         row = item.sp[req.frame : req.frame + 1]
-        modified = apply_params(row, req.params or Params())
+        modified = apply_params(row, params, partner=partner)
         return {
             "freq": freq_axis().tolist(),
             "original_db": to_db(row[0]).tolist(),
             "modified_db": (10 * np.log10(modified[0])).tolist(),
+            "partner_db": None if partner is None else (partner[0] / DB_TO_LN).tolist(),
         }
 
     @app.get("/api/original/{id_}")
