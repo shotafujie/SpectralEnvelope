@@ -48,10 +48,10 @@
 - **TC-505-1** 関数で morph + formant + smooth + tilt + bands + curve の一括適用 == この順の逐次適用
 - **TC-505-2** curve を formant より前に適用した結果とは一致しない
 
-### SPEC-506 全フレーム共通、f0・ap 不変
+### SPEC-506 全フレーム共通、fo・ap 不変
 
 - **TC-506-1** 乱数の curve で synthesize → 合成に渡る sp の全フレームで、`curve` 省略時の sp との dB 差が C(freq) と一致（1e-6）
-- **TC-506-2** 同条件で、合成に渡る f0 と ap が `curve` 省略時と要素単位で一致
+- **TC-506-2** 同条件で、合成に渡る fo と ap が `curve` 省略時と要素単位で一致
 
 ### SPEC-510 ハンドルの x 位置
 

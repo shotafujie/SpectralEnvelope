@@ -15,7 +15,7 @@
 ### やらないこと
 
 - DTW 等による内容に沿った時間対応付け（時間は線形に伸縮するだけ）
-- B の f0・ap の利用（再合成は常に A の f0・ap）
+- B の fo・ap の利用（再合成は常に A の fo・ap）
 - 3 つ以上の録音の混合
 - 保持件数（10 件）の変更
 
@@ -39,7 +39,7 @@
 - **SPEC-403** 混合後の log_sp は、フレーム i ごとに `(1 − α) · (A の log_sp) + α · (伸縮後の B の log_sp)` である
 - **SPEC-404** `morph.ratio` が 1 で他のパラメータが初期値のとき、`modified_db` は伸縮後の B の dB 表示値と一致する（差 1e-6 以内）
 - **SPEC-405** 加工は morph → formant → smooth → tilt → bands の順に適用される
-- **SPEC-406** `morph` を指定しても、再合成に使う f0 と ap は A のもの（f0 は A の f0 × pitch）である
+- **SPEC-406** `morph` を指定しても、再合成に使う fo と ap は A のもの（fo は A の fo × pitch）である
 - **SPEC-407** `morph` を指定しても、`/api/synthesize` の出力のサンプル数は A の元音のサンプル数と一致する
 - **SPEC-408** `morph.id` が保持されていないとき、`/api/envelope` と `/api/synthesize` は 404 を返す
 - **SPEC-409** `morph` を指定したとき、`/api/envelope` の応答の `partner_db` は、指定フレームに対応する伸縮後の B の dB 表示値（1025 要素）である

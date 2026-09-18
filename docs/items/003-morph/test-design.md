@@ -13,7 +13,7 @@
 | E2E | 選択欄・mix・相手の包絡線 | `tests/e2e/test_morph_ui.py` |
 
 - 伸縮後の B の期待値は、テスト側で B の `original_db`（envelope API）を位置 p の前後フレームで線形補間して独立に求める。dB 表示値は log_sp の定数倍なので、log 領域の線形補間・線形混合は dB 領域でも同じ式になる
-- 合成に渡る f0 / ap は 001 と同じ `pyworld.synthesize` のスパイで観測する
+- 合成に渡る fo / ap は 001 と同じ `pyworld.synthesize` のスパイで観測する
 - E2E の観測点: `#current` / `#partner`（`select`、`option` の value は id、「なし」は空文字）、`input[name=mix]` / `#mix-value`、`#partner-line`（path）
 - E2E の 2 つ目以降の録音はファイル読み込み（002）で作る
 
@@ -50,10 +50,10 @@
 - **TC-405-1** 関数で morph（α 0.6）+ formant 1.3 + smooth 20 + tilt 4 + bands [3,−2,5,−6] の一括適用 == morph → formant → smooth → tilt → bands の逐次適用
 - **TC-405-2** 同条件で formant を morph より先にした結果とは一致しない
 
-### SPEC-406 f0 と ap は A のもの
+### SPEC-406 fo と ap は A のもの
 
-- **TC-406-1** A=/a/（f0 120）、B=/i/（f0 200）、morph ratio 0.8・pitch 1.2 で synthesize → 合成に渡る f0 == A の f0 × 1.2、ap == `morph` 省略時に渡る ap（要素単位で一致）
-- **TC-406-2** 同条件で合成音を再分解 → 有声フレームの f0 中央値が 144 ±5%（B の f0 に引っ張られない）
+- **TC-406-1** A=/a/（fo 120）、B=/i/（fo 200）、morph ratio 0.8・pitch 1.2 で synthesize → 合成に渡る fo == A の fo × 1.2、ap == `morph` 省略時に渡る ap（要素単位で一致）
+- **TC-406-2** 同条件で合成音を再分解 → 有声フレームの fo 中央値が 144 ±5%（B の fo に引っ張られない）
 
 ### SPEC-407 合成の長さは A
 

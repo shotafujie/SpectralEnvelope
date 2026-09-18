@@ -40,7 +40,7 @@
 - **SPEC-503** `curve` = [c_0, …, c_19] のとき、各ビンの dB 表示値に C(freq) が加算される
 - **SPEC-504** C(f_j) は c_j と一致し、隣り合う制御点の間では log2(f) に対して線形である
 - **SPEC-505** 加工は morph → formant → smooth → tilt → bands → curve の順に適用される
-- **SPEC-506** `curve` はすべてのフレームに同じゲインを加え、f0 と ap は変えない
+- **SPEC-506** `curve` はすべてのフレームに同じゲインを加え、fo と ap は変えない
 
 ### UI
 
