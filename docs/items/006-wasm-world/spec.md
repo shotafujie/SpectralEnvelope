@@ -96,10 +96,11 @@ WASM 移行（ADR-0001）は 4 つのアイテムに分けて進める。これ�
 - **SPEC-741** x の長さが `minSamples` 未満のとき、`analyze` は RangeError を投げる
 - **SPEC-742** x の長さが `maxSamples` を超えるとき、`analyze` は RangeError を投げる
 - **SPEC-743** 長さがちょうど `minSamples` の x と、ちょうど `maxSamples` の x は、どちらも `analyze` が例外を投げずに結果を返す
-- **SPEC-744** f0 の長さを N としたとき、t の長さが N でない場合、または sp か ap の長さが N·F でない場合、`synthesize` は RangeError を投げる
+- **SPEC-744** f0 の長さを N としたとき、sp か ap の長さが N·F でない場合、`synthesize` は RangeError を投げる
 - **SPEC-745** n が 1 未満の場合、または `maxSamples` を超える場合、`synthesize` は RangeError を投げる
 - **SPEC-746** 例外を投げた後も、同じエンジンで `analyze` と `synthesize` を続けて呼ぶと、正常な結果を返す
-- **SPEC-747** 10 秒の入力で `analyze` と `synthesize` を続けて 20 回呼んだ後の WASM メモリの大きさは、1 回目を終えた直後の大きさと同じである（呼び出しのたびにメモリが増えていかない）
+- **SPEC-747** 10 秒の入力で `analyze` と `synthesize` を続けて 20 回呼んだ後の `memoryBytes` は、1 回目を終えた直後の `memoryBytes` と同じである（呼び出しのたびにメモリが増えていかない）
+- **SPEC-748** エンジンの `memoryBytes` は、そのエンジンが使っている WASM 線形メモリのバイト数で、65536 の正の倍数である
 
 ### 照合用データ
 
