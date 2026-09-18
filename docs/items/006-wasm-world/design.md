@@ -58,6 +58,6 @@ C ラッパーを変えたら（タスク 8 で長さ L の処理を加えると
 
 ## 検証の方法
 
-- 実装中は各タスクで `node --test tests/js/` と、該当する pytest を回す
+- 実装中は各タスクで `node --test 'tests/js/*.test.mjs'` と、該当する pytest を回す
 - 完了の判断は `agents/verifier`（独立検証）が行い、`verification.md` を書く
 - 検証の前に `~/dev/.claude/hooks/trace-check.sh docs/items/006-wasm-world` の孤児が、[1]（verification.md 未作成）を除いて 0 件であることを確かめる

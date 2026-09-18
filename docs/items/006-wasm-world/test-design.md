@@ -8,8 +8,8 @@
 
 | レベル | 対象 | 置き場所 | 実行コマンド |
 |---|---|---|---|
-| ユニット（エンジン） | 生成、分解、再合成、異常系、メモリ | `tests/js/world-engine.test.mjs` | `node --test tests/js/` |
-| 統合（ビルド） | ソースの取り込み、ビルドスクリプト、成果物の再現 | `tests/js/world-build.test.mjs` | `node --test tests/js/` |
+| ユニット（エンジン） | 生成、分解、再合成、異常系、メモリ | `tests/js/world-engine.test.mjs` | `node --test 'tests/js/*.test.mjs'` |
+| 統合（ビルド） | ソースの取り込み、ビルドスクリプト、成果物の再現 | `tests/js/world-build.test.mjs` | `node --test 'tests/js/*.test.mjs'` |
 | 統合（照合用データ） | 生成スクリプトの再現性、バージョンの記録 | `tests/test_golden_world.py` | `.venv/bin/pytest tests/test_golden_world.py` |
 | ブラウザ | Chromium のモジュール Worker からの読み込み | `tests/e2e/test_world_worker.py` | `.venv/bin/pytest tests/e2e/test_world_worker.py` |
 | 性能 | 分解と再合成の時間、基準値のファイル | `tests/js/world-perf.test.mjs` | `node --test tests/js/world-perf.test.mjs` |
@@ -29,7 +29,7 @@
 ### SPEC-700 `third_party/world/` に、WORLD の `src/` 以下のファイルと、WORLD のライセンス文（`LICENSE.txt`）がある
 
 - **TC-700-1** `third_party/world/src/` に `harvest.cpp`、`cheaptrick.cpp`、`d4c.cpp`、`synthesis.cpp`、`common.cpp`、`fft.cpp`、`matlabfunctions.cpp` と、`world/` の下のヘッダがある
-- **TC-700-2** `third_party/world/LICENSE.txt` があり、中身に "Masanori Morise" を含む
+- **TC-700-2** `third_party/world/LICENSE.txt` があり、中身に著作権表示 "Copyright (c) 2010  M. Morise" と、再配布の条件（"Redistribution and use in source and binary forms"）を含む
 
 ### SPEC-701 `third_party/world/COMMIT` の内容は、40 桁のコミットハッシュ `d625e7608ca23a870018f01e7c562ac683d9847f` の 1 行である
 
