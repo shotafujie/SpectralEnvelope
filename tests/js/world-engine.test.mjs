@@ -304,3 +304,19 @@ test("synthesize が例外を投げた後も、同じエンジンで正しく再
   assert.throws(() => e.synthesize(G.f0, G.sp.slice(0, -1), G.ap, 44100), RangeError);
   assert.ok(maxAbsDiff(e.synthesize(G.f0, G.sp, G.ap, 44100), G.y) <= 1e-6);
 });
+
+// ---------------------------------------------------------------- メモリ
+
+// TC-747-1
+test("10 秒の分解と再合成を 20 回繰り返しても memoryBytes は 1 回目の後から増えない", async () => {
+  const e = await createEngine();
+  const x = vowel10s();
+  const once = () => {
+    const r = e.analyze(x);
+    e.synthesize(r.f0, r.sp, r.ap, x.length);
+  };
+  once();
+  const after1 = e.memoryBytes;
+  for (let i = 0; i < 19; i++) once();
+  assert.equal(e.memoryBytes, after1);
+});
