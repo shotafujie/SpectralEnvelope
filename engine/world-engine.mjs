@@ -53,8 +53,20 @@ export async function createEngine() {
         return { f0: copyOut(pf0, n), t: copyOut(pt, n), sp: copyOut(psp, n * BINS), ap: copyOut(pap, n * BINS) };
       });
     },
-    synthesize() {
-      throw new Error("未実装");
+    // 再合成の長さ L = floor(N · framePeriod / 1000 · fs)（pyworld と同じ）で合成し、先頭 n サンプルを返す。
+    // n が L より長いとき、残りは 0
+    synthesize(f0, sp, ap, n) {
+      const frames = f0.length;
+      const synthLength = Math.floor(((frames * FRAME_PERIOD) / 1000) * FS);
+      return withBuffers([frames, frames * BINS, frames * BINS, synthLength], ([pf0, psp, pap, py]) => {
+        view(pf0, frames).set(f0);
+        view(psp, frames * BINS).set(sp);
+        view(pap, frames * BINS).set(ap);
+        M._world_synthesize(pf0, psp, pap, frames, FFT_SIZE, FS, FRAME_PERIOD, py, synthLength);
+        const y = new Float64Array(n);
+        y.set(view(py, Math.min(n, synthLength)));
+        return y;
+      });
     },
   };
 }

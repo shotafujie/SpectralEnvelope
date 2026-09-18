@@ -205,3 +205,62 @@ test("analyze が例外を投げた後も、同じエンジンで正しく分解
   assert.throws(() => e.analyze(new Float64Array(0)), RangeError);
   assert.ok(maxAbsDiff(e.analyze(G.x.slice()).f0, G.f0) <= 1e-6);
 });
+
+// ---------------------------------------------------------------- 再合成
+
+const L1 = Math.floor(N1 * 220.5); // 44320
+
+// TC-730-1
+test("n = 44100 で長さ 44100 の Float64Array を返す", async () => {
+  const y = (await createEngine()).synthesize(G.f0, G.sp, G.ap, 44100);
+  assert.ok(y instanceof Float64Array);
+  assert.equal(y.length, 44100);
+});
+
+// TC-730-2
+test("n = 1 で長さ 1", async () => {
+  assert.equal((await createEngine()).synthesize(G.f0, G.sp, G.ap, 1).length, 1);
+});
+
+// TC-730-3
+test("n = 50000（L より長い）で長さ 50000", async () => {
+  assert.equal((await createEngine()).synthesize(G.f0, G.sp, G.ap, 50000).length, 50000);
+});
+
+// TC-731-1
+test("再合成は照合用データの y と 1e-6 以内で一致する", async () => {
+  const y = (await createEngine()).synthesize(G.f0, G.sp, G.ap, 44100);
+  assert.ok(maxAbsDiff(y, G.y) <= 1e-6);
+});
+
+// TC-732-1
+test("L を超えた部分はすべて 0", async () => {
+  assert.equal(L1, 44320);
+  const y = (await createEngine()).synthesize(G.f0, G.sp, G.ap, 50000);
+  assert.ok(y.subarray(L1).every(v => v === 0));
+});
+
+// TC-732-2
+test("n を長くしても先頭 44100 サンプルは照合用データと一致する", async () => {
+  const y = (await createEngine()).synthesize(G.f0, G.sp, G.ap, 50000);
+  assert.ok(maxAbsDiff(y.subarray(0, 44100), G.y) <= 1e-6);
+});
+
+// TC-733-1
+test("synthesize は引数の f0 / sp / ap を書き換えない", async () => {
+  const [f0, sp, ap] = [G.f0.slice(), G.sp.slice(), G.ap.slice()];
+  (await createEngine()).synthesize(f0, sp, ap, 44100);
+  assert.deepEqual(f0, G.f0);
+  assert.deepEqual(sp, G.sp);
+  assert.deepEqual(ap, G.ap);
+});
+
+// TC-734-1
+test("3 秒の無加工往復で包絡差は 1.0dB 以下", async () => {
+  const e = await createEngine();
+  const x = vowel3s();
+  const a = e.analyze(x);
+  const b = e.analyze(e.synthesize(a.f0, a.sp, a.ap, x.length));
+  const d = envelopeDiff(a.sp, a.f0, b.sp, b.f0);
+  assert.ok(d <= 1.0, `${d} dB`);
+});
