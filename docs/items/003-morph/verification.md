@@ -2,12 +2,12 @@
 
 - 検証日: 2026-09-18
 - 検証者: verifier サブエージェント（独立検証）
-- 対象コミット: `91c7b18`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
+- 対象コミット: `ce54387`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
 - 対象仕様: `spec.md` / 対象テスト設計: `test-design.md`
 - 実行環境: macOS 26.5.2、Apple Silicon (arm64)、Python 3.13.12、pytest 9.1.1、ffmpeg 8.1.2
-- 検証の観点: `91c7b18` で 005 に SPEC-614 / SPEC-615（画面に見える文言に `f0` の綴りが出ないこと、
-  分解結果の表示）が追加された。その追加分の判定と、既存の保証が壊れていないかの判定。
-  レポートは今回の実行結果で全体を書き直している。
+- 検証の観点: `ce54387` で 005 の SPEC-614 / SPEC-615 の文言が厳しくなり（非表示の要素の文言と大文字小文字を
+  問わない検査、表示の並びの検査）、対応するテストも変わった。その追加・変更分の判定と、
+  既存の保証が壊れていないかの判定。レポートは今回の実行結果で全体を書き直している。
 
 ## 判定サマリ
 
@@ -19,20 +19,19 @@
 | **仕様の総数** | 23 |
 
 判定の根拠は、5 アイテム分をまとめた 1 回のフル実行（`.venv/bin/pytest -v`、
-`237 passed, 2 warnings in 263.25s (0:04:23)`、終了コード 0）。
-出力に FAILED / ERROR / SKIPPED / XFAIL / XPASS の行は 0 件
-（結果行 237 行を数えて、PASSED 以外の行が 0 行）。
+`238 passed, 2 warnings in 264.81s (0:04:24)`、終了コード 0）。
+出力に FAILED / ERROR / SKIPPED / XFAIL / XPASS の行は 0 件（結果行 238 行の内訳が `{'PASSED': 238}`）。
 
 判定は仕様単位で、次の手順で機械的に決めた。
 
 1. `test-design.md` からその仕様に属する TC をすべて取り出す。
 2. その TC が `pytest -v` の結果行に 1 件以上現れ、現れたすべての行が PASSED であれば PASS。
-   1 つのテスト名が 2 つの TC を持つ場合（`test_TC_234_1_TC_234_2_…`）と、
+   1 つのテスト名が 2 つ以上の TC を持つ場合（`test_TC_428_1_TC_428_2_…`）と、
    1 つの TC が複数のパラメータ化行に分かれる場合の両方を、この規則で扱う。
 3. 1 件も現れない TC がある、または PASSED 以外の行がある場合は PASS にしない。
 
 設計にあって実行結果に現れない TC は全アイテムで 0 件、実行結果に現れて設計に無い TC も 0 件
-（237 行の結果行から取り出した TC ID 238 種類 = 5 アイテムの設計 TC 238 件と完全一致）。
+（238 行の結果行から取り出した TC ID 239 種類 = 5 アイテムの設計 TC 239 件と完全一致）。
 
 ## 仕様別の判定
 
@@ -76,10 +75,10 @@ rootdir: /Users/fujiemon/dev/speech/analyze/SpectralEnvelope
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.15.1
-collecting ... collected 237 items
+collecting ... collected 238 items
 
-（中略: 237 行の結果行のうち、このアイテムに属するものを下に抜き出す）
-================= 237 passed, 2 warnings in 263.25s (0:04:23) ==================
+（中略: 238 行の結果行のうち、このアイテムに属するものを下に抜き出す）
+================= 238 passed, 2 warnings in 264.81s (0:04:24) ==================
 EXIT=0
 ```
 
@@ -99,7 +98,7 @@ tests/e2e/test_morph_ui.py::test_TC_426_1_相手の選択でデバウンス後�
 tests/e2e/test_morph_ui.py::test_TC_426_2_mixの連続変更は最後だけ送る PASSED [ 14%]
 tests/e2e/test_morph_ui.py::test_TC_427_1_相手の包絡線が描かれる PASSED  [ 15%]
 tests/e2e/test_morph_ui.py::test_TC_427_2_相手なしに戻すと消える PASSED  [ 15%]
-tests/e2e/test_morph_ui.py::test_TC_428_1_TC_428_2_リセットとプリセットはmixだけ戻す PASSED [ 16%]
+tests/e2e/test_morph_ui.py::test_TC_428_1_TC_428_2_リセットとプリセットはmixだけ戻す PASSED [ 15%]
 tests/e2e/test_morph_ui.py::test_TC_429_1_mixのダブルクリックで0 PASSED  [ 16%]
 tests/e2e/test_morph_ui.py::test_TC_430_1_一覧は最新10件 PASSED          [ 16%]
 tests/test_morph.py::test_TC_403_1_伸縮して混ぜる PASSED                 [ 88%]
@@ -111,7 +110,7 @@ tests/test_morph.py::test_TC_400_2_morph_nullは省略と同じ PASSED         [
 tests/test_morph.py::test_TC_401_1_ratio1_5は1と同じ PASSED              [ 90%]
 tests/test_morph.py::test_TC_401_2_負のratioは混合なし PASSED            [ 91%]
 tests/test_morph.py::test_TC_402_1_ratio0の包絡は混合なし PASSED         [ 91%]
-tests/test_morph.py::test_TC_402_2_ratio0の合成は混合なしと同一 PASSED   [ 91%]
+tests/test_morph.py::test_TC_402_2_ratio0の合成は混合なしと同一 PASSED   [ 92%]
 tests/test_morph.py::test_TC_403_3_APIの混合は式どおり PASSED            [ 92%]
 tests/test_morph.py::test_TC_404_1_ratio1は伸縮後のB PASSED              [ 92%]
 tests/test_morph.py::test_TC_404_2_Bが長くても伸縮後のB PASSED           [ 93%]
@@ -156,9 +155,9 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 [004-gain-curve] 仕様 18件 / テストケース 30件
 
-[005-ui-affordance] 仕様 15件 / テストケース 24件
+[005-ui-affordance] 仕様 15件 / テストケース 25件
 
-[テストコード] 検出したテストケースID: 238件 (探索起点: .)
+[テストコード] 検出したテストケースID: 239件 (探索起点: .)
 
 孤児: 0件 — 仕様・テスト設計・テストコード・検証はすべて対応が取れています。
 ```
@@ -177,25 +176,29 @@ $ ~/dev/.claude/hooks/trace-check.sh
 | 4 | コードにあるが設計に無いTC | 0 |
 | 5 | 親仕様が存在しないTC | 0 |
 
-（`trace-check.sh` は孤児が 0 件の分類を個別に出力しないため、合計「孤児: 0件」からの転記。）
+（`trace-check.sh` は孤児が 0 件の分類を個別に出力しないため、合計「孤児: 0件」からの転記。
+上の出力はレポート書き直し後のもの。書き直し前の同じコマンドの出力も「孤児: 0件」・終了コード 0 だった。）
 
 ## 所見
 
 仕様とテスト設計を読んだうえで気づいたこと。判定を左右しないが記録すべきもの。
 
-- **003 に関わる `91c7b18` の変更はテスト名 2 件の改名だけ。**
-  `tests/test_morph.py` の `test_TC_406_1_f0とapはAのもの` → `…foとapはAのもの`、
-  `test_TC_406_2_合成音のf0はBに引っ張られない` → `…foはBに引っ張られない`。
-  TC ID（`TC_406_1` / `TC_406_2`）は変わらず、`spec.md` / `test-design.md` は変更されていない。
-  仕様 23 件 / TC 43 件は前回検証（`802aa71`）と同数で、判定も 23 件すべて PASS のまま。
-- **SPEC-406 とテストの対応は保たれている。** 仕様は「再合成に使う fo と ap は A のもの（fo は A の fo × pitch）」、
+- **`ce54387` は 003 に一切触れていない。** `git show --stat ce54387` が挙げる 3 ファイルに、
+  003 の `spec.md` / `test-design.md` も `tests/e2e/test_morph_ui.py` / `tests/test_morph.py` も含まれない。
+  23 仕様 / 43 TC の対応は前回検証（`91c7b18`）と同数で、判定も 23 件すべて PASS のまま。
+  この判定は差分ではなく今回のフル実行の結果に基づく。
+- **前回 003 の所見で「Chromium の `innerText` が `<option>` のテキストを含むかに依存している」と
+  書いた点は解消した。** 005 の新しい検査（`f0_hits`）は要素を直接走査してテキストノードを見るため、
+  `innerText` の挙動に依存しない。実測でも `#current` の option ラベルに入れた `f0` が
+  `text:OPTION` として検出される（005 のレポートの所見の表）。
+  SPEC-420 が求める選択欄のラベル（通し番号・入力元・長さ）に `f0` が出ないことは、
+  この経路で 005 側から縛られている。
+- SPEC-406 とテストの対応は保たれている。仕様は「再合成に使う fo と ap は A のもの（fo は A の fo × pitch）」、
   テストが観測しているのは `pyworld.synthesize` に渡る f0 配列そのもの。001 の「表記」が pyworld の識別子を
-  除外しているため、`fo`（文書）と `f0`（コード）は同じ対象を指す。改名は説明語の統一であって観測対象を変えていない。
+  除外しており、005 の新しい SPEC-614 も「スクリプトとスタイルの中身は除く」としているため、
+  文書の `fo` とコードの `f0` が同じ対象を指すことと矛盾しない。
 - 005 の SPEC-607 / SPEC-614 は mix スライダーの `data-tip`（現在は「…fo（基本周波数）と ap は…」）を縛るが、
   003 の仕様が mix について要求するのは範囲・刻み・初期値・数値表示（SPEC-424）とダブルクリック（SPEC-429）だけで、
   説明文には触れていない。TC-424-1 / TC-429-1 はいずれも PASSED。
-- SPEC-420 は選択欄のラベルが「通し番号・入力元（『録音』またはファイル名）・長さ（秒）を含む」ことを求める。
-  005 の SPEC-614 はこのラベルにも `f0` が出ないことを要求しており、実測では Chromium の
-  `document.body.innerText` が `<option>` のテキストを含むため検出可能（005 のレポートの所見に記載）。
-  ただしこれは Chromium の実装に依存した検出であり、テスト設計書には明記されていない。
 - TC-422-3 は `#unvoiced` の可視・不可視だけを見ているため、その文言が変わっても落ちない。PASSED。
+  文言側は 005 の TC-614-3 が無声フレームを選んだ状態で検査するようになった（実測で検出を確認）。
