@@ -1,190 +1,26 @@
-"""UI の E2E テスト。実サーバー + Chromium の偽マイク（合成母音 wav をループ再生）で録音から再生まで通す。
-
-UI 側の観測点（テストとの契約）:
-  #rec 録音ボタン（録音中は data-state="recording"） / #elapsed 経過秒
-  #graph SVG（data-ymax, data-ymin, data-plot-left, data-plot-right）
-    #orig-line / #mod-line 包絡線、line.band-line[data-freq] 帯域の縦線
-  #frame フレームスライダー / #unvoiced 無声表示
-  input[name=formant|tilt|band0..band3|smooth|pitch] と #<name>-value
-  #reset / button[data-preset] / #play-orig / #play-mod / audio#player[data-source] / #error
-"""
+"""001 の UI の E2E テスト。実サーバー + Chromium の偽マイク（合成母音 wav をループ再生）で録音から再生まで通す。"""
 
 import json
 import math
-import socket
-import subprocess
-import sys
 import time
-import urllib.request
-from pathlib import Path
 
 import numpy as np
 import pytest
-from playwright.sync_api import expect, sync_playwright
+from playwright.sync_api import expect
 
-from tests import audio_fixtures as af
-
-ROOT = Path(__file__).resolve().parents[2]
-SLIDERS = {
-    "formant": (0.6, 1.6, 0.01, 1.0),
-    "tilt": (-12, 12, 0.1, 0.0),
-    "band0": (-12, 12, 0.1, 0.0),
-    "band1": (-12, 12, 0.1, 0.0),
-    "band2": (-12, 12, 0.1, 0.0),
-    "band3": (-12, 12, 0.1, 0.0),
-    "smooth": (0, 80, 1, 0),
-    "pitch": (0.5, 2.0, 0.01, 1.0),
-}
-DEFAULTS = {k: v[3] for k, v in SLIDERS.items()}
-
-
-# ---------------------------------------------------------------- フィクスチャ
-
-
-@pytest.fixture(scope="session")
-def fake_mic_wav(tmp_path_factory):
-    # 0.5 秒無音 + 1.5 秒母音 + 0.5 秒無音。2.5 秒録れば必ず無声区間を含む
-    path = tmp_path_factory.mktemp("mic") / "vowel.wav"
-    path.write_bytes(af.wav_bytes(af.with_silence(af.vowel("a", 1.5))))
-    return path
-
-
-@pytest.fixture(scope="session")
-def base_url():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-    proc = subprocess.Popen([sys.executable, "jig/server.py", "--port", str(port)], cwd=ROOT,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    url = f"http://localhost:{port}"
-    deadline = time.time() + 20
-    while True:
-        try:
-            urllib.request.urlopen(url + "/", timeout=1)
-            break
-        except OSError:
-            if time.time() > deadline:
-                proc.kill()
-                raise
-            time.sleep(0.2)
-    yield url
-    proc.terminate()
-    proc.wait(timeout=10)
-
-
-@pytest.fixture(scope="session")
-def browser(fake_mic_wav):
-    with sync_playwright() as p:
-        b = p.chromium.launch(args=[
-            "--use-fake-ui-for-media-stream",
-            "--use-fake-device-for-media-stream",
-            f"--use-file-for-fake-audio-capture={fake_mic_wav}",
-            "--autoplay-policy=no-user-gesture-required",
-        ])
-        yield b
-        b.close()
-
-
-class Requests:
-    def __init__(self):
-        self.items = []
-
-    def of(self, path):
-        return [r for r in self.items if r["path"] == path]
-
-    def clear(self):
-        self.items.clear()
-
-
-@pytest.fixture
-def page(browser, base_url):
-    ctx = browser.new_context(base_url=base_url, permissions=["microphone"])
-    pg = ctx.new_page()
-    pg.set_default_timeout(8000)
-    reqs = Requests()
-
-    def on_request(req):
-        path = req.url.split(base_url, 1)[-1]
-        body = None
-        if req.method == "POST" and path != "/api/analyze":
-            body = json.loads(req.post_data or "null")
-        reqs.items.append({"path": path, "body": body, "t": time.monotonic()})
-
-    pg.on("request", on_request)
-    pg.reqs = reqs
-    pg.goto("/")
-    yield pg
-    ctx.close()
-
-
-# ---------------------------------------------------------------- 操作ヘルパ
-
-
-def record(page, seconds=2.5):
-    """録音して分解完了まで待ち、/api/analyze の応答 JSON を返す。"""
-    with page.expect_response("**/api/analyze") as resp:
-        page.click("#rec")
-        page.wait_for_timeout(int(seconds * 1000))
-        page.click("#rec")
-    info = resp.value.json()
-    expect(page.locator("#frame")).to_be_enabled()
-    page.wait_for_function("id => document.querySelector('#graph').dataset.id === id", arg=info["id"])
-    return info
-
-
-def set_slider(page, name, value):
-    page.eval_on_selector(
-        f"input[name={name}]",
-        "(el, v) => { el.value = v; el.dispatchEvent(new Event('input', {bubbles: true})); }",
-        str(value),
-    )
-
-
-def slider_values(page):
-    return page.evaluate(
-        "names => Object.fromEntries(names.map(n => [n, Number(document.querySelector(`input[name=${n}]`).value)]))",
-        list(SLIDERS),
-    )
-
-
-def wait_playing(page, source):
-    """指定の音が再生中になるまで待ち、そのときの currentTime を返す。"""
-    handle = page.wait_for_function(
-        "src => { const a = document.querySelector('#player');"
-        " return a.dataset.source === src && !a.paused && a.currentTime > 0 && a.currentTime; }",
-        arg=source,
-        polling=20,
-    )
-    return handle.json_value()
-
-
-def hold_requests(page, pattern):
-    """pattern に一致する要求を保留する。戻り値のリストに route が溜まるので、テスト側で continue_ する。"""
-    held = []
-
-    def handler(route):
-        held.append(route)
-
-    page.route(pattern, handler)
-    return held
-
-
-def wait_held(page, held, timeout=10.0):
-    deadline = time.monotonic() + timeout
-    while not held:
-        assert time.monotonic() < deadline, "request was not issued"
-        page.wait_for_timeout(50)
-
-
-def rgb(css):
-    return [int(float(v)) for v in css[css.index("(") + 1 : css.index(")")].split(",")[:3]]
-
-
-def wait_envelope_count(page, n, timeout=2.0):
-    deadline = time.monotonic() + timeout
-    while len(page.reqs.of("/api/envelope")) < n and time.monotonic() < deadline:
-        page.wait_for_timeout(50)
-    return len(page.reqs.of("/api/envelope"))
+from tests.e2e.helpers import (
+    DEFAULTS,
+    SLIDERS,
+    hold_requests,
+    record,
+    rgb,
+    set_slider,
+    set_slider_frame,
+    slider_values,
+    wait_envelope_count,
+    wait_held,
+    wait_playing,
+)
 
 
 # ---------------------------------------------------------------- 録音
@@ -324,14 +160,6 @@ def test_TC_222_1_無声フレームで表示が出る(page):
     expect(page.locator("#unvoiced")).to_be_visible()
     set_slider_frame(page, info["voiced_frames"][0])
     expect(page.locator("#unvoiced")).to_be_hidden()
-
-
-def set_slider_frame(page, value):
-    page.eval_on_selector(
-        "#frame",
-        "(el, v) => { el.value = v; el.dispatchEvent(new Event('input', {bubbles: true})); }",
-        str(value),
-    )
 
 
 def test_TC_223_1_フレーム変更で包絡を取り直す(page):
