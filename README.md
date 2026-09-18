@@ -27,7 +27,8 @@ VIRTUAL_ENV=$PWD/.venv uv pip install -r requirements.txt
 5. 「元音」「加工音」、または **Space** で交互に再生して聴き比べる
 
 加工は morph → formant → smooth → tilt → bands → ゲインカーブ の順に適用される。
-pitch は再合成時に f0 に掛けるだけで、f0 と ap は常に「現在の録音」のものを使う。
+pitch は再合成時に fo（基本周波数）に掛けるだけで、fo と ap は常に「現在の録音」のものを使う。
+表記は Titze らの合意（下付きは oscillation の o）に従って fo とする。ただし pyworld の識別子と API の `f0_mean` は元の綴りのまま。
 
 モーフィングでは、相手の包絡を現在の録音のフレーム数に線形に伸縮してから、mix の比率で対数領域で混ぜる。
 

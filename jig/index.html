@@ -108,7 +108,7 @@
 <main>
   <header>
     <h1>包絡いじり治具</h1>
-    <p>録音 → WORLD で分解 → sp だけ加工 → 元の f0・ap で再合成</p>
+    <p>録音 → WORLD で分解 → sp だけ加工 → 元の fo・ap で再合成</p>
   </header>
 
   <div class="side" style="grid-column: 1">
@@ -134,9 +134,9 @@
       <div class="row frame-row">
         <label for="frame">フレーム</label>
         <input id="frame" type="range" min="0" max="0" step="1" value="0" disabled
-          data-tip="包絡を表示する時間位置。5ms 刻みのフレーム番号">
+          data-tip="包絡を表示する時間位置。5ms 刻みのフレーム番号（無声＝fo が 0 のフレームもある）">
         <output id="frame-value">—</output>
-        <span id="unvoiced" hidden>無声フレームです（f0 = 0）</span>
+        <span id="unvoiced" hidden>無声フレームです（fo = 0）</span>
       </div>
     </section>
   </div>
@@ -162,7 +162,7 @@
       <div class="param">
         <label for="p-mix">mix</label>
         <input id="p-mix" name="mix" type="range" min="0" max="1" step="0.01" value="0"
-          data-tip="相手の包絡をこの比率で混ぜる。f0 と ap は現在の録音のまま（ダブルクリックで初期値に戻る）">
+          data-tip="相手の包絡をこの比率で混ぜる。fo（基本周波数）と ap は現在の録音のまま（ダブルクリックで初期値に戻る）">
         <output id="mix-value">0.00</output>
       </div>
     </section>
@@ -206,7 +206,7 @@ const PARAMS = [
   { name: "smooth", label: "smooth", min: 0, max: 80, step: 1, init: 0, digits: 0, group: "平滑化・ピッチ",
     tip: "包絡をケプストラムの低次だけ残して平滑化する。小さいほどのっぺりして声色が失われる（0 で無効）" },
   { name: "pitch", label: "pitch ×", min: 0.5, max: 2.0, step: 0.01, init: 1.0, digits: 2,
-    tip: "再合成に使う f0 の倍率。包絡はそのままで高さだけ変える" },
+    tip: "再合成に使う fo（基本周波数＝声の高さ）の倍率。包絡はそのままで高さだけ変える" },
 ];
 
 const PRESETS = [
@@ -670,7 +670,7 @@ function activate(info) {
   stopPlayback();
   elapsedEl.textContent = "";
   metaEl.textContent =
-    `${info.duration.toFixed(2)} 秒 / ${info.frames} フレーム / 平均 f0 ${info.f0_mean.toFixed(1)} Hz`;
+    `${info.duration.toFixed(2)} 秒 / ${info.frames} フレーム / 平均 fo ${info.f0_mean.toFixed(1)} Hz`;
   const v = info.voiced_frames;
   frameInput.max = info.frames - 1;
   frameInput.value = v.length ? v[Math.floor(v.length / 2)] : 0;
