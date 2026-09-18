@@ -1,0 +1,18 @@
+{
+ "median_seconds": {
+  "3s": {
+   "analyze": 0.5988,
+   "synthesize": 0.0348
+  },
+  "10s": {
+   "analyze": 2.0587,
+   "synthesize": 0.1154
+  }
+ },
+ "conditions": {
+  "cpu": "Apple M4 Max",
+  "node": "v22.22.3",
+  "input": "tests/golden/vowel-a-{3s,10s}.f64（合成母音 /a/）",
+  "method": "初回を除く 5 回の中央値"
+ }
+}
