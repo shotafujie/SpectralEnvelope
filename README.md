@@ -2,6 +2,8 @@
 
 その場で録音した声を WORLD（pyworld）で分解し、スペクトル包絡（sp）だけを加工して再合成し、元音と聴き比べるローカルツール。
 
+![画面](docs/images/screenshot.png)
+
 ## 必要なもの
 
 - Python 3.13 / [uv](https://github.com/astral-sh/uv)
