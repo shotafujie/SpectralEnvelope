@@ -1,5 +1,7 @@
 """005-ui-affordance: ツールチップとスライダーの変更表示の E2E テスト。"""
 
+import re
+
 import pytest
 from playwright.sync_api import expect
 
@@ -177,32 +179,47 @@ def test_TC_613_1_フレームスライダーは常にグレー(page):
 # ---------------------------------------------------------------- 基本周波数の表記
 
 
-def visible_f0(page):
-    """画面に見える文言と data-tip の中の "f0" を集める。"""
+def f0_hits(page):
+    """画面に出うる文言（非表示の要素も含む。script / style は除く）と data-tip の中の "f0"。"""
     return page.evaluate(
-        "() => { const hits = [];"
-        " const text = document.body.innerText || '';"
-        " if (text.includes('f0')) hits.push('text');"
-        " for (const el of document.querySelectorAll('[data-tip]'))"
-        "   if (el.dataset.tip.includes('f0')) hits.push(`tip:${el.id || el.className}`);"
+        "() => { const hits = []; const bad = /f0/i;"
+        " for (const el of document.body.querySelectorAll('*')) {"
+        "   if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;"
+        "   for (const n of el.childNodes)"
+        "     if (n.nodeType === 3 && bad.test(n.textContent)) hits.push(`text:${el.id || el.tagName}`);"
+        "   if (el.dataset.tip && bad.test(el.dataset.tip)) hits.push(`tip:${el.id || el.className}`);"
+        " }"
         " return hits; }"
     )
 
 
 def test_TC_614_2_分解前の画面にf0が無い(page):
-    assert visible_f0(page) == []
+    assert f0_hits(page) == []
 
 
 def test_TC_614_1_分解後の画面にf0が無い(page):
     record(page)
     page.hover(slider("pitch"))
     expect(page.locator("#tooltip")).to_be_visible()
-    assert visible_f0(page) == []
+    assert f0_hits(page) == []
+
+
+def test_TC_614_3_無声表示とドラッグ中とエラー表示にもf0が無い(page):
+    info = record(page)
+    unvoiced = next(i for i in range(info["frames"]) if i not in set(info["voiced_frames"]))
+    set_slider_frame(page, unvoiced)
+    expect(page.locator("#unvoiced")).to_be_visible()
+    assert f0_hits(page) == []
+    drag_handle(page, 7, gain=6.0, release=False)
+    expect(page.locator("#curve-readout")).to_be_visible()
+    assert f0_hits(page) == []
+    page.mouse.up()
+    page.route("**/api/synthesize", lambda r: r.fulfill(status=500, body="boom"))
+    page.click("#play-mod")
+    expect(page.locator("#error")).not_to_be_empty()
+    assert f0_hits(page) == []
 
 
 def test_TC_615_1_分解結果の表示(page):
     info = record(page)
-    meta = page.inner_text("#meta")
-    assert "平均 fo" in meta
-    assert f"{info['f0_mean']:.1f}" in meta
-    assert "Hz" in meta
+    assert re.search(rf"平均 fo {info['f0_mean']:.1f} Hz", page.inner_text("#meta"))
