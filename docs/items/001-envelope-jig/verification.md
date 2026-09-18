@@ -2,11 +2,12 @@
 
 - 検証日: 2026-09-18
 - 検証者: verifier サブエージェント（独立検証）
-- 対象コミット: `802aa71`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
+- 対象コミット: `91c7b18`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
 - 対象仕様: `spec.md` / 対象テスト設計: `test-design.md`
 - 実行環境: macOS 26.5.2、Apple Silicon (arm64)、Python 3.13.12、pytest 9.1.1、ffmpeg 8.1.2
-- 検証の観点: `904147e`（画面の表記）と `802aa71`（仕様書・テスト設計書の表記）で基本周波数の綴りを
-  `f0` から `fo` に変えたことにより、保証の内容が変わっていないか・既存の保証が壊れていないか
+- 検証の観点: `91c7b18` で 005 に SPEC-614 / SPEC-615（画面に見える文言に `f0` の綴りが出ないこと、
+  分解結果の表示）が追加された。その追加分の判定と、既存の保証が壊れていないかの判定。
+  レポートは今回の実行結果で全体を書き直している。
 
 ## 判定サマリ
 
@@ -18,9 +19,9 @@
 | **仕様の総数** | 86 |
 
 判定の根拠は、5 アイテム分をまとめた 1 回のフル実行（`.venv/bin/pytest -v`、
-`234 passed, 2 warnings in 257.25s (0:04:17)`）。
+`237 passed, 2 warnings in 263.25s (0:04:23)`、終了コード 0）。
 出力に FAILED / ERROR / SKIPPED / XFAIL / XPASS の行は 0 件
-（`grep -cE 'FAILED|ERROR|SKIPPED|XFAIL|XPASS'` の出力が 0）。
+（結果行 237 行を数えて、PASSED 以外の行が 0 行）。
 
 判定は仕様単位で、次の手順で機械的に決めた。
 
@@ -31,7 +32,7 @@
 3. 1 件も現れない TC がある、または PASSED 以外の行がある場合は PASS にしない。
 
 設計にあって実行結果に現れない TC は全アイテムで 0 件、実行結果に現れて設計に無い TC も 0 件
-（234 行の結果行から取り出した TC ID 235 種類 = 5 アイテムの設計 TC 235 件と完全一致）。
+（237 行の結果行から取り出した TC ID 238 種類 = 5 アイテムの設計 TC 238 件と完全一致）。
 
 ## 仕様別の判定
 
@@ -131,155 +132,149 @@
 全体の集計行（5 アイテム分を 1 回で実行）:
 
 ```
-$ .venv/bin/pytest -v
+$ .venv/bin/pytest -v > pytest.log 2>&1; echo "EXIT=$?" >> pytest.log
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.12, pytest-9.1.1, pluggy-1.6.0 -- /Users/fujiemon/dev/speech/analyze/SpectralEnvelope/.venv/bin/python3
 rootdir: /Users/fujiemon/dev/speech/analyze/SpectralEnvelope
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.15.1
-collecting ... collected 234 items
+collecting ... collected 237 items
 
-（中略: 234 行の結果行のうち、このアイテムに属するものを下に抜き出す）
-================= 234 passed, 2 warnings in 257.25s (0:04:17) ==================
+（中略: 237 行の結果行のうち、このアイテムに属するものを下に抜き出す）
+================= 237 passed, 2 warnings in 263.25s (0:04:23) ==================
+EXIT=0
 ```
-
-pytest の終了コードは記録できなかった。実行時に `${PIPESTATUS[0]}` で拾おうとしたが、
-このシェルは zsh（`pipestatus`）のため空に展開され、ログ末尾は `EXITCODE=` のままになっている。
-観測できたのは上の集計行と、`collected 234 items` に対して 234 行の結果行がすべて PASSED であること、
-`grep -cE 'FAILED|ERROR|SKIPPED|XFAIL|XPASS'` の出力が 0 であること。
-（前回検証 `8840cd2` のレポートは pytest の終了コードを記録しているが、今回は取れていない。
-以下の trace-check の「終了コード: 0」は、実行時に表示された値をそのまま書いている。）
 
 このアイテムに属する TC を名前に持つ結果行（上の出力からの抜粋、加工なし）:
 
 ```
-tests/e2e/test_ui.py::test_TC_200_1_録音中は経過秒が増える PASSED        [ 26%]
-tests/e2e/test_ui.py::test_TC_201_1_停止で自動送信される PASSED          [ 26%]
-tests/e2e/test_ui.py::test_TC_202_1_送信中は録音ボタンが無効 PASSED      [ 27%]
-tests/e2e/test_ui.py::test_TC_203_1_10秒で自動停止する PASSED            [ 27%]
-tests/e2e/test_ui.py::test_TC_204_1_再録音でidが差し替わる PASSED        [ 28%]
-tests/e2e/test_ui.py::test_TC_205_1_未分解では再生ボタンが無効 PASSED    [ 28%]
+tests/e2e/test_ui.py::test_TC_200_1_録音中は経過秒が増える PASSED        [ 27%]
+tests/e2e/test_ui.py::test_TC_201_1_停止で自動送信される PASSED          [ 27%]
+tests/e2e/test_ui.py::test_TC_202_1_送信中は録音ボタンが無効 PASSED      [ 28%]
+tests/e2e/test_ui.py::test_TC_203_1_10秒で自動停止する PASSED            [ 28%]
+tests/e2e/test_ui.py::test_TC_204_1_再録音でidが差し替わる PASSED        [ 29%]
+tests/e2e/test_ui.py::test_TC_205_1_未分解では再生ボタンが無効 PASSED    [ 29%]
 tests/e2e/test_ui.py::test_TC_205_2_録音中と分解失敗後も再生ボタンが無効 PASSED [ 29%]
-tests/e2e/test_ui.py::test_TC_210_1_元包絡と加工後包絡の2本 PASSED       [ 29%]
-tests/e2e/test_ui.py::test_TC_211_1_横軸は対数スケール PASSED            [ 29%]
-tests/e2e/test_ui.py::test_TC_212_1_縦軸は最大値プラス5から70dB幅 PASSED [ 30%]
-tests/e2e/test_ui.py::test_TC_213_1_帯域の縦線が3本 PASSED               [ 30%]
-tests/e2e/test_ui.py::test_TC_220_1_フレームスライダーの範囲 PASSED      [ 31%]
-tests/e2e/test_ui.py::test_TC_221_1_初期フレームは有声フレームの中央 PASSED [ 31%]
+tests/e2e/test_ui.py::test_TC_210_1_元包絡と加工後包絡の2本 PASSED       [ 30%]
+tests/e2e/test_ui.py::test_TC_211_1_横軸は対数スケール PASSED            [ 30%]
+tests/e2e/test_ui.py::test_TC_212_1_縦軸は最大値プラス5から70dB幅 PASSED [ 31%]
+tests/e2e/test_ui.py::test_TC_213_1_帯域の縦線が3本 PASSED               [ 31%]
+tests/e2e/test_ui.py::test_TC_220_1_フレームスライダーの範囲 PASSED      [ 32%]
+tests/e2e/test_ui.py::test_TC_221_1_初期フレームは有声フレームの中央 PASSED [ 32%]
 tests/e2e/test_ui.py::test_TC_222_1_無声フレームで表示が出る PASSED      [ 32%]
-tests/e2e/test_ui.py::test_TC_223_1_フレーム変更で包絡を取り直す PASSED  [ 32%]
-tests/e2e/test_ui.py::test_TC_230_1_スライダーの範囲と初期値 PASSED      [ 32%]
-tests/e2e/test_ui.py::test_TC_231_1_数値表示が追従する PASSED            [ 33%]
-tests/e2e/test_ui.py::test_TC_232_1_ダブルクリックで初期値に戻る PASSED  [ 33%]
-tests/e2e/test_ui.py::test_TC_233_1_すべてリセット PASSED                [ 34%]
-tests/e2e/test_ui.py::test_TC_234_1_TC_234_2_300msデバウンス PASSED      [ 34%]
+tests/e2e/test_ui.py::test_TC_223_1_フレーム変更で包絡を取り直す PASSED  [ 33%]
+tests/e2e/test_ui.py::test_TC_230_1_スライダーの範囲と初期値 PASSED      [ 33%]
+tests/e2e/test_ui.py::test_TC_231_1_数値表示が追従する PASSED            [ 34%]
+tests/e2e/test_ui.py::test_TC_232_1_ダブルクリックで初期値に戻る PASSED  [ 34%]
+tests/e2e/test_ui.py::test_TC_233_1_すべてリセット PASSED                [ 35%]
+tests/e2e/test_ui.py::test_TC_234_1_TC_234_2_300msデバウンス PASSED      [ 35%]
 tests/e2e/test_ui.py::test_TC_235_1_パラメータ変更で合成しない PASSED    [ 35%]
-tests/e2e/test_ui.py::test_TC_236_1_smooth5は10として描画される PASSED   [ 35%]
-tests/e2e/test_ui.py::test_TC_240_1_加工音ボタンでその時点の値で合成して再生 PASSED [ 35%]
-tests/e2e/test_ui.py::test_TC_240_2_加工音の再押下は先頭から PASSED      [ 36%]
-tests/e2e/test_ui.py::test_TC_241_1_合成待ちはローディング表示 PASSED    [ 36%]
+tests/e2e/test_ui.py::test_TC_236_1_smooth5は10として描画される PASSED   [ 36%]
+tests/e2e/test_ui.py::test_TC_240_1_加工音ボタンでその時点の値で合成して再生 PASSED [ 36%]
+tests/e2e/test_ui.py::test_TC_240_2_加工音の再押下は先頭から PASSED      [ 37%]
+tests/e2e/test_ui.py::test_TC_241_1_合成待ちはローディング表示 PASSED    [ 37%]
 tests/e2e/test_ui.py::test_TC_242_1_元音ボタンで元音を再生 PASSED        [ 37%]
-tests/e2e/test_ui.py::test_TC_242_2_元音の再押下は先頭から PASSED        [ 37%]
+tests/e2e/test_ui.py::test_TC_242_2_元音の再押下は先頭から PASSED        [ 38%]
 tests/e2e/test_ui.py::test_TC_243_1_スペースで元音と加工音が交互に再生される PASSED [ 38%]
-tests/e2e/test_ui.py::test_TC_243_2_加工音の後のスペースは元音 PASSED    [ 38%]
-tests/e2e/test_ui.py::test_TC_244_1_ボタンにフォーカスがあってもスペースはAB切替 PASSED [ 38%]
-tests/e2e/test_ui.py::test_TC_244_2_スライダーにフォーカスがあってもスクロールしない PASSED [ 39%]
-tests/e2e/test_ui.py::test_TC_245_1_新しい再生で前の音は止まる PASSED    [ 39%]
+tests/e2e/test_ui.py::test_TC_243_2_加工音の後のスペースは元音 PASSED    [ 39%]
+tests/e2e/test_ui.py::test_TC_244_1_ボタンにフォーカスがあってもスペースはAB切替 PASSED [ 39%]
+tests/e2e/test_ui.py::test_TC_244_2_スライダーにフォーカスがあってもスクロールしない PASSED [ 40%]
+tests/e2e/test_ui.py::test_TC_245_1_新しい再生で前の音は止まる PASSED    [ 40%]
 tests/e2e/test_ui.py::test_TC_250_1_プリセットで表の値になる PASSED      [ 40%]
-tests/e2e/test_ui.py::test_TC_250_2_プリセットを続けて押すと前の値が消える PASSED [ 40%]
+tests/e2e/test_ui.py::test_TC_250_2_プリセットを続けて押すと前の値が消える PASSED [ 41%]
 tests/e2e/test_ui.py::test_TC_260_1_分解エラーを表示する PASSED          [ 41%]
-tests/e2e/test_ui.py::test_TC_260_2_合成エラーを表示する PASSED          [ 41%]
-tests/e2e/test_ui.py::test_TC_261_1_マイク取得失敗を表示する PASSED      [ 41%]
-tests/test_api.py::test_TC_001_1_webmを分解して必要なキーを返す PASSED   [ 42%]
-tests/test_api.py::test_TC_001_2_webmのdurationは元の長さ PASSED         [ 42%]
+tests/e2e/test_ui.py::test_TC_260_2_合成エラーを表示する PASSED          [ 42%]
+tests/e2e/test_ui.py::test_TC_261_1_マイク取得失敗を表示する PASSED      [ 42%]
+tests/test_api.py::test_TC_001_1_webmを分解して必要なキーを返す PASSED   [ 43%]
+tests/test_api.py::test_TC_001_2_webmのdurationは元の長さ PASSED         [ 43%]
 tests/test_api.py::test_TC_002_1_22050Hzステレオwavは44100Hzモノラルになる PASSED [ 43%]
-tests/test_api.py::test_TC_002_2_44100Hzモノラルwavはサンプルが保たれる PASSED [ 43%]
+tests/test_api.py::test_TC_002_2_44100Hzモノラルwavはサンプルが保たれる PASSED [ 44%]
 tests/test_api.py::test_TC_003_1_fsとfft_size PASSED                     [ 44%]
-tests/test_api.py::test_TC_003_2_48000Hz入力でもfsは44100 PASSED         [ 44%]
-tests/test_api.py::test_TC_004_1_TC_004_2_durationはサンプル数割る44100[132300-3.0] PASSED [ 44%]
+tests/test_api.py::test_TC_003_2_48000Hz入力でもfsは44100 PASSED         [ 45%]
+tests/test_api.py::test_TC_004_1_TC_004_2_durationはサンプル数割る44100[132300-3.0] PASSED [ 45%]
 tests/test_api.py::test_TC_004_1_TC_004_2_durationはサンプル数割る44100[66150-1.5] PASSED [ 45%]
-tests/test_api.py::test_TC_005_1_framesはf0の要素数 PASSED               [ 45%]
+tests/test_api.py::test_TC_005_1_framesはfoの要素数 PASSED               [ 46%]
 tests/test_api.py::test_TC_005_2_最終フレームが存在する PASSED           [ 46%]
-tests/test_api.py::test_TC_006_1_voiced_framesは有声フレームの昇順 PASSED [ 46%]
+tests/test_api.py::test_TC_006_1_voiced_framesは有声フレームの昇順 PASSED [ 47%]
 tests/test_api.py::test_TC_006_2_voiced_framesの個数 PASSED              [ 47%]
-tests/test_api.py::test_TC_007_1_f0_meanは約120Hz PASSED                 [ 47%]
-tests/test_api.py::test_TC_007_2_無音ではf0_meanが0 PASSED               [ 47%]
+tests/test_api.py::test_TC_007_1_f0_meanは約120Hz PASSED                 [ 48%]
+tests/test_api.py::test_TC_007_2_無音ではf0_meanが0 PASSED               [ 48%]
 tests/test_api.py::test_TC_007_3_f0_meanは有声フレームの平均 PASSED      [ 48%]
-tests/test_api.py::test_TC_008_1_idは8桁の16進 PASSED                    [ 48%]
+tests/test_api.py::test_TC_008_1_idは8桁の16進 PASSED                    [ 49%]
 tests/test_api.py::test_TC_008_2_idは毎回異なる PASSED                   [ 49%]
-tests/test_api.py::test_TC_009_1_1秒未満は400 PASSED                     [ 49%]
+tests/test_api.py::test_TC_009_1_1秒未満は400 PASSED                     [ 50%]
 tests/test_api.py::test_TC_009_2_ちょうど1秒は受け付ける PASSED          [ 50%]
-tests/test_api.py::test_TC_010_1_10秒超は切り詰める PASSED               [ 50%]
-tests/test_api.py::test_TC_010_2_ちょうど10秒 PASSED                     [ 50%]
+tests/test_api.py::test_TC_010_1_10秒超は切り詰める PASSED               [ 51%]
+tests/test_api.py::test_TC_010_2_ちょうど10秒 PASSED                     [ 51%]
 tests/test_api.py::test_TC_011_1_ランダムバイトは400 PASSED              [ 51%]
-tests/test_api.py::test_TC_011_2_空ファイルは400 PASSED                  [ 51%]
+tests/test_api.py::test_TC_011_2_空ファイルは400 PASSED                  [ 52%]
 tests/test_api.py::test_TC_012_1_audioフィールドが無いと422 PASSED       [ 52%]
-tests/test_api.py::test_TC_013_1_11件目で最古が破棄される PASSED         [ 52%]
-tests/test_api.py::test_TC_013_2_11件目で2件目は残る PASSED              [ 52%]
-tests/test_api.py::test_TC_014_1_10件までは全て残る PASSED               [ 53%]
-tests/test_api.py::test_TC_020_1_元音WAVの形式 PASSED                    [ 53%]
+tests/test_api.py::test_TC_013_1_11件目で最古が破棄される PASSED         [ 53%]
+tests/test_api.py::test_TC_013_2_11件目で2件目は残る PASSED              [ 53%]
+tests/test_api.py::test_TC_014_1_10件までは全て残る PASSED               [ 54%]
+tests/test_api.py::test_TC_020_1_元音WAVの形式 PASSED                    [ 54%]
 tests/test_api.py::test_TC_021_1_元音WAVの長さ PASSED                    [ 54%]
-tests/test_api.py::test_TC_022_1_元音の未知id PASSED                     [ 54%]
+tests/test_api.py::test_TC_022_1_元音の未知id PASSED                     [ 55%]
 tests/test_api.py::test_TC_030_1_TC_030_2_合成WAVの形式[None] PASSED     [ 55%]
-tests/test_api.py::test_TC_030_1_TC_030_2_合成WAVの形式[params1] PASSED  [ 55%]
-tests/test_api.py::test_TC_031_1_TC_031_2_合成WAVの長さは元音と一致[None] PASSED [ 55%]
+tests/test_api.py::test_TC_030_1_TC_030_2_合成WAVの形式[params1] PASSED  [ 56%]
+tests/test_api.py::test_TC_031_1_TC_031_2_合成WAVの長さは元音と一致[None] PASSED [ 56%]
 tests/test_api.py::test_TC_031_1_TC_031_2_合成WAVの長さは元音と一致[params1] PASSED [ 56%]
-tests/test_api.py::test_TC_032_1_TC_032_2_無加工往復の包絡差は1dB以下[a-True] PASSED [ 56%]
+tests/test_api.py::test_TC_032_1_TC_032_2_無加工往復の包絡差は1dB以下[a-True] PASSED [ 57%]
 tests/test_api.py::test_TC_032_1_TC_032_2_無加工往復の包絡差は1dB以下[i-False] PASSED [ 57%]
-tests/test_api.py::test_TC_033_1_無加工の3通りは同一 PASSED              [ 57%]
+tests/test_api.py::test_TC_033_1_無加工の3通りは同一 PASSED              [ 58%]
 tests/test_api.py::test_TC_034_3_合成APIの出力も16bit化で飽和する PASSED [ 58%]
-tests/test_api.py::test_TC_035_1_合成の未知id PASSED                     [ 58%]
-tests/test_api.py::test_TC_036_1_apは分解時のままで加工されない PASSED   [ 58%]
+tests/test_api.py::test_TC_035_1_合成の未知id PASSED                     [ 59%]
+tests/test_api.py::test_TC_036_1_apは分解時のままで加工されない PASSED   [ 59%]
 tests/test_api.py::test_TC_037_1_合成のspと包絡APIのmodified_dbが一致する PASSED [ 59%]
-tests/test_api.py::test_TC_040_1_包絡応答の形 PASSED                     [ 59%]
+tests/test_api.py::test_TC_040_1_包絡応答の形 PASSED                     [ 60%]
 tests/test_api.py::test_TC_041_1_original_dbは元spのdB値 PASSED          [ 60%]
-tests/test_api.py::test_TC_042_1_TC_042_2_無加工ならmodifiedはoriginalと一致[None] PASSED [ 60%]
+tests/test_api.py::test_TC_042_1_TC_042_2_無加工ならmodifiedはoriginalと一致[None] PASSED [ 61%]
 tests/test_api.py::test_TC_042_1_TC_042_2_無加工ならmodifiedはoriginalと一致[params1] PASSED [ 61%]
-tests/test_api.py::test_TC_043_1_TC_043_2_TC_043_3_frame範囲[-1-400] PASSED [ 61%]
-tests/test_api.py::test_TC_043_1_TC_043_2_TC_043_3_frame範囲[frames-400] PASSED [ 61%]
+tests/test_api.py::test_TC_043_1_TC_043_2_TC_043_3_frame範囲[-1-400] PASSED [ 62%]
+tests/test_api.py::test_TC_043_1_TC_043_2_TC_043_3_frame範囲[frames-400] PASSED [ 62%]
 tests/test_api.py::test_TC_043_1_TC_043_2_TC_043_3_frame範囲[0-200] PASSED [ 62%]
-tests/test_api.py::test_TC_044_1_包絡の未知id PASSED                     [ 62%]
+tests/test_api.py::test_TC_044_1_包絡の未知id PASSED                     [ 63%]
 tests/test_api.py::test_TC_045_1_母音でピーク位置が変わる PASSED         [ 63%]
-tests/test_api.py::test_TC_050_1_未指定キーは初期値 PASSED               [ 63%]
+tests/test_api.py::test_TC_050_1_未指定キーは初期値 PASSED               [ 64%]
 tests/test_api.py::test_TC_051_1_formant範囲外はクランプされて包絡に効く PASSED [ 64%]
 tests/test_api.py::test_TC_055_2_smooth5はsmooth10と同じ PASSED          [ 64%]
-tests/test_api.py::test_TC_056_1_bands要素数3は422 PASSED                [ 64%]
+tests/test_api.py::test_TC_056_1_bands要素数3は422 PASSED                [ 65%]
 tests/test_api.py::test_TC_056_2_bandsに文字列は422 PASSED               [ 65%]
-tests/test_api.py::test_TC_062_1_TC_062_2_formantでグラフのピークが移る[1.25-1.1875-1.3125] PASSED [ 65%]
+tests/test_api.py::test_TC_062_1_TC_062_2_formantでグラフのピークが移る[1.25-1.1875-1.3125] PASSED [ 66%]
 tests/test_api.py::test_TC_062_1_TC_062_2_formantでグラフのピークが移る[0.8-0.76-0.84] PASSED [ 66%]
-tests/test_api.py::test_TC_063_1_formantで合成音のピークが移る PASSED    [ 66%]
-tests/test_api.py::test_TC_100_1_TC_100_2_pitchで合成音のf0が変わる[1.5-1.455-1.545] PASSED [ 67%]
-tests/test_api.py::test_TC_100_1_TC_100_2_pitchで合成音のf0が変わる[0.5-0.485-0.515] PASSED [ 67%]
-tests/test_api.py::test_TC_101_1_無声フレームは0のまま PASSED            [ 67%]
+tests/test_api.py::test_TC_063_1_formantで合成音のピークが移る PASSED    [ 67%]
+tests/test_api.py::test_TC_100_1_TC_100_2_pitchで合成音のfoが変わる[1.5-1.455-1.545] PASSED [ 67%]
+tests/test_api.py::test_TC_100_1_TC_100_2_pitchで合成音のfoが変わる[0.5-0.485-0.515] PASSED [ 67%]
+tests/test_api.py::test_TC_101_1_無声フレームは0のまま PASSED            [ 68%]
 tests/test_api.py::test_TC_102_1_pitchは包絡に影響しない PASSED          [ 68%]
-tests/test_api.py::test_TC_123_1_ルートでUIページを返す PASSED           [ 68%]
+tests/test_api.py::test_TC_123_1_ルートでUIページを返す PASSED           [ 69%]
 tests/test_dsp.py::test_TC_050_2_空のパラメータは初期値になる PASSED     [ 75%]
 tests/test_dsp.py::test_TC_051_1_TC_051_2_TC_051_3_formantのクランプ[5.0-1.6] PASSED [ 75%]
 tests/test_dsp.py::test_TC_051_1_TC_051_2_TC_051_3_formantのクランプ[0.1-0.6] PASSED [ 76%]
 tests/test_dsp.py::test_TC_051_1_TC_051_2_TC_051_3_formantのクランプ[1.6-1.6] PASSED [ 76%]
-tests/test_dsp.py::test_TC_052_1_TC_052_2_tiltのクランプ[100-12.0] PASSED [ 76%]
+tests/test_dsp.py::test_TC_052_1_TC_052_2_tiltのクランプ[100-12.0] PASSED [ 77%]
 tests/test_dsp.py::test_TC_052_1_TC_052_2_tiltのクランプ[-13--12.0] PASSED [ 77%]
-tests/test_dsp.py::test_TC_053_1_bandsの各要素がクランプされる PASSED    [ 77%]
+tests/test_dsp.py::test_TC_053_1_bandsの各要素がクランプされる PASSED    [ 78%]
 tests/test_dsp.py::test_TC_054_1_TC_054_2_pitchのクランプ[3.0-2.0] PASSED [ 78%]
 tests/test_dsp.py::test_TC_054_1_TC_054_2_pitchのクランプ[0.1-0.5] PASSED [ 78%]
 tests/test_dsp.py::test_TC_055_1_smoothの丸め PASSED                     [ 79%]
 tests/test_dsp.py::test_TC_056_3_bands形式不正はバリデーションエラー[bands0] PASSED [ 79%]
-tests/test_dsp.py::test_TC_056_3_bands形式不正はバリデーションエラー[bands1] PASSED [ 79%]
+tests/test_dsp.py::test_TC_056_3_bands形式不正はバリデーションエラー[bands1] PASSED [ 80%]
 tests/test_dsp.py::test_TC_060_1_r2でビンkはk半分の位置の値になる PASSED [ 80%]
-tests/test_dsp.py::test_TC_060_2_r1_25で線形補間される PASSED            [ 80%]
+tests/test_dsp.py::test_TC_060_2_r1_25で線形補間される PASSED            [ 81%]
 tests/test_dsp.py::test_TC_060_3_r1は恒等 PASSED                         [ 81%]
 tests/test_dsp.py::test_TC_061_1_範囲外は最終ビンの値 PASSED             [ 81%]
 tests/test_dsp.py::test_TC_070_1_DCTの低次だけ残す PASSED                [ 82%]
 tests/test_dsp.py::test_TC_070_2_低次成分だけの行は変化しない PASSED     [ 82%]
-tests/test_dsp.py::test_TC_071_1_smooth0は恒等 PASSED                    [ 82%]
+tests/test_dsp.py::test_TC_071_1_smooth0は恒等 PASSED                    [ 83%]
 tests/test_dsp.py::test_TC_080_1_tilt6の加算量 PASSED                    [ 83%]
 tests/test_dsp.py::test_TC_080_2_0Hzは20Hzとして扱う PASSED              [ 83%]
 tests/test_dsp.py::test_TC_090_1_バンドゲインはゲインカーブどおり加算される PASSED [ 84%]
 tests/test_dsp.py::test_TC_091_1_平坦区間の代表点 PASSED                 [ 84%]
 tests/test_dsp.py::test_TC_091_2_両端の平坦区間 PASSED                   [ 85%]
 tests/test_dsp.py::test_TC_092_1_500Hz境界のクロスフェード PASSED        [ 85%]
-tests/test_dsp.py::test_TC_092_2_4000Hz境界に段差が無い PASSED           [ 85%]
+tests/test_dsp.py::test_TC_092_2_4000Hz境界に段差が無い PASSED           [ 86%]
 tests/test_dsp.py::test_TC_110_1_一括適用は定められた順序の逐次適用と一致する PASSED [ 86%]
 tests/test_dsp.py::test_TC_110_2_順序を変えると結果が変わる PASSED       [ 86%]
 tests/test_dsp.py::test_TC_034_1_振幅超過は飽和する PASSED               [ 87%]
@@ -315,9 +310,9 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 [004-gain-curve] 仕様 18件 / テストケース 30件
 
-[005-ui-affordance] 仕様 13件 / テストケース 21件
+[005-ui-affordance] 仕様 15件 / テストケース 24件
 
-[テストコード] 検出したテストケースID: 235件 (探索起点: .)
+[テストコード] 検出したテストケースID: 238件 (探索起点: .)
 
 孤児: 0件 — 仕様・テスト設計・テストコード・検証はすべて対応が取れています。
 ```
@@ -342,35 +337,30 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 仕様とテスト設計を読んだうえで気づいたこと。判定を左右しないが記録すべきもの。
 
-- **今回の変更は説明文の綴りだけで、保証の内容は変わっていない。** 対象リビジョン `802aa71` とその親 `904147e` は、
-  基本周波数の表記を `f0` から `fo` に統一した 2 コミットである。001 では `spec.md` の共通の定義・SPEC-005/006/007・
-  SPEC-100/101・見出し「fo スケール `pitch`」・修正表 #5 と、`test-design.md` の TC-005-1 / TC-006-1 / TC-006-2 /
-  TC-007-1 / TC-007-3 / TC-100-1 / TC-101-1 の説明文が書き換わった。`git show 802aa71` の差分は語の置換だけで、
-  しきい値（±3%、1e-6、120±6 など）・観測対象・仕様件数・TC 件数はいずれも変わっていない。
-  仕様 86 件 / TC 132 件は前回検証（`8840cd2`）と同数で、判定も 86 件すべて PASS のまま。
-- **仕様が指す対象とテストが見る対象の食い違いは見つからなかった。** `spec.md` の共通の定義「表記」は、
-  pyworld の識別子・コードの変数名・API 応答フィールド `f0_mean` を明示的に除外している。この除外があるため、
-  「応答の `f0_mean` は、fo > 0 のフレームの fo の算術平均である」（SPEC-007）と
-  `test_TC_007_1_f0_meanは約120Hz` / `test_TC_007_3_f0_meanは有声フレームの平均` は同じものを指している。
-  散文に `f0` が残るのは `test-design.md:261` の `f0_floor=40`（harvest の引数名）1 箇所だけで、これも除外の範囲内。
-- **画面文言の変更で落ちうるテストは無かった。** `jig/index.html` の変更は 4 種類（ヘッダーの説明文、`#unvoiced` の
-  「無声フレームです（fo = 0）」、`#meta` の「平均 fo」、frame / mix / pitch の `data-tip`）。001 の仕様で関係するのは
-  SPEC-222 だけで、SPEC-222 は「無声である旨の表示が出て…消える」としか要求しておらず、
-  TC-222-1（`tests/e2e/test_ui.py:155-162`）は `#unvoiced` の可視・不可視だけを観測する。文言を変えても落ちない。PASSED。
-- **`#meta`（「平均 fo … Hz」）を観測するテストは 1 件も無く、対応する仕様IDも無い。**
-  `grep -rnE '#meta|#unvoiced|inner_text|to_have_text|get_by_text|textContent' tests/` で、テストが描画テキストを
-  文字列として比較しているのは `#tooltip` / `#elapsed` / `#formant-value` / `#tilt-value` / `#mix-value` /
-  `#frame-value` / `#curve-readout` / select の option ラベルだけであり、`#meta` は含まれない。
-  この行の表示が壊れても、どのテストも落ちない。
-- **今回追加された「表記」は共通の定義の行であって `- **SPEC-NNN**` の仕様行ではない。**
-  「文書と画面の文言では `fo` と書く」は画面についての主張だが、仕様IDが無いためテストケースも無く、
-  `trace-check.sh` の「孤児: 0件」もこれを見ていない（孤児2は行頭の `SPEC-NNN` 定義だけを数えるため）。
-  画面の文言が `f0` に戻っても、落ちるテストは 1 件も無い。
-- テストコードの日本語のテスト名には `f0` が残っている（`test_TC_005_1_framesはf0の要素数`、
-  `test_TC_100_1_TC_100_2_pitchで合成音のf0が変わる` など）。設計側の同じ TC の説明文は `fo` になったため、
-  読み比べたときの綴りは揃っていない。`trace-check.sh` は TC の ID だけを照合するので追跡には影響しない。
-- SPEC-120 / SPEC-121（性能）は、他の重い処理を並行させずに実行した今回のフル実行の中で測定されている
-  （`tests/test_perf.py` の 2 件とも PASSED）。しきい値そのものの余裕は pytest の出力からは読み取れない。
+- **`91c7b18` が 001 に触れたのはテスト名 2 件だけで、仕様書・テスト設計書・`jig/index.html` は変更されていない。**
+  `git show --stat 91c7b18` が挙げるのは 6 ファイル（005 の `spec.md` / `test-design.md`、`tests/e2e/test_tooltip.py`、
+  `tests/test_api.py`、`tests/test_curve.py`、`tests/test_morph.py`）。001 に関わるのは `tests/test_api.py` の
+  `test_TC_005_1_framesはf0の要素数` → `…はfoの要素数`、
+  `test_TC_100_1_TC_100_2_pitchで合成音のf0が変わる` → `…foが変わる` の 2 件の改名のみ。
+  TC ID（`TC_005_1` / `TC_100_1` / `TC_100_2`）は変わっていないため、`trace-check.sh` の照合も維持されている。
+  仕様 86 件 / TC 132 件は前回検証（`802aa71`）と同数で、判定も 86 件すべて PASS のまま。
+- **前回のレポートが記録した穴のうち「画面文言」の部分が塞がった。** 前回 001 の所見は
+  「画面の文言が `f0` に戻っても、落ちるテストは 1 件も無い」「`#meta`（『平均 fo … Hz』）を観測するテストは 1 件も無く、
+  対応する仕様IDも無い」と書いていた。`91c7b18` で追加された 005 の SPEC-614 / SPEC-615 が、
+  画面文言と `#meta` の表示をテストで縛るようになった。ただし **仕様IDは 005 側にあり、001 側には無い**。
+  001 の「共通の定義」の「表記」の行は依然として仕様行（`- **SPEC-NNN**`）ではないため、
+  001 の trace-check はこれを見ていない。
+- **`f0` の綴りがコード側に残っているのは仕様どおり。** 001 の共通の定義「表記」は、pyworld の識別子・
+  コードの変数名・API 応答フィールド `f0_mean` を明示的に除外している。SPEC-007 と
+  `test_TC_007_1_f0_meanは約120Hz` / `test_TC_007_3_f0_meanは有声フレームの平均` は同じものを指しており、
+  005 の SPEC-614 も「画面に見える文言」に限定しているので、両者は衝突していない。
+- SPEC-222（無声フレームの表示）の TC-222-1 は `#unvoiced` の可視・不可視だけを観測しており、
+  その文言（現在は「無声フレームです（fo = 0）」）は見ていない。005 の TC-614-1 / TC-614-2 も
+  `#unvoiced` が可視になる状態を作らないため、**この要素の文言が `f0` に戻っても落ちるテストは無い**
+  （実測は 005 のレポートの所見に記載）。
+- SPEC-120 / SPEC-121（性能）は 3 回計測の中央値で、実行環境の負荷に依存する。今回は他の重い処理を
+  並行させずに 1 回のフル実行の中で測定しており、`tests/test_perf.py` の 2 件とも PASSED。
+  しきい値に対する余裕は pytest の出力からは読み取れない。
 - 「受け入れ試聴」の M1〜M3 は仕様IDを持たず、自動検査の対象外。記録は末尾の節のとおりで、M2 / M3 は未報告のまま。
 
 ## 受け入れ試聴の記録（検証後の追記）

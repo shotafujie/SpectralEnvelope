@@ -2,11 +2,12 @@
 
 - 検証日: 2026-09-18
 - 検証者: verifier サブエージェント（独立検証）
-- 対象コミット: `802aa71`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
+- 対象コミット: `91c7b18`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
 - 対象仕様: `spec.md` / 対象テスト設計: `test-design.md`
 - 実行環境: macOS 26.5.2、Apple Silicon (arm64)、Python 3.13.12、pytest 9.1.1、ffmpeg 8.1.2
-- 検証の観点: `904147e`（画面の表記）と `802aa71`（仕様書・テスト設計書の表記）で基本周波数の綴りを
-  `f0` から `fo` に変えたことにより、保証の内容が変わっていないか・既存の保証が壊れていないか
+- 検証の観点: `91c7b18` で 005 に SPEC-614 / SPEC-615（画面に見える文言に `f0` の綴りが出ないこと、
+  分解結果の表示）が追加された。その追加分の判定と、既存の保証が壊れていないかの判定。
+  レポートは今回の実行結果で全体を書き直している。
 
 ## 判定サマリ
 
@@ -18,9 +19,9 @@
 | **仕様の総数** | 23 |
 
 判定の根拠は、5 アイテム分をまとめた 1 回のフル実行（`.venv/bin/pytest -v`、
-`234 passed, 2 warnings in 257.25s (0:04:17)`）。
+`237 passed, 2 warnings in 263.25s (0:04:23)`、終了コード 0）。
 出力に FAILED / ERROR / SKIPPED / XFAIL / XPASS の行は 0 件
-（`grep -cE 'FAILED|ERROR|SKIPPED|XFAIL|XPASS'` の出力が 0）。
+（結果行 237 行を数えて、PASSED 以外の行が 0 行）。
 
 判定は仕様単位で、次の手順で機械的に決めた。
 
@@ -31,7 +32,7 @@
 3. 1 件も現れない TC がある、または PASSED 以外の行がある場合は PASS にしない。
 
 設計にあって実行結果に現れない TC は全アイテムで 0 件、実行結果に現れて設計に無い TC も 0 件
-（234 行の結果行から取り出した TC ID 235 種類 = 5 アイテムの設計 TC 235 件と完全一致）。
+（237 行の結果行から取り出した TC ID 238 種類 = 5 アイテムの設計 TC 238 件と完全一致）。
 
 ## 仕様別の判定
 
@@ -68,48 +69,42 @@
 全体の集計行（5 アイテム分を 1 回で実行）:
 
 ```
-$ .venv/bin/pytest -v
+$ .venv/bin/pytest -v > pytest.log 2>&1; echo "EXIT=$?" >> pytest.log
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.12, pytest-9.1.1, pluggy-1.6.0 -- /Users/fujiemon/dev/speech/analyze/SpectralEnvelope/.venv/bin/python3
 rootdir: /Users/fujiemon/dev/speech/analyze/SpectralEnvelope
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.15.1
-collecting ... collected 234 items
+collecting ... collected 237 items
 
-（中略: 234 行の結果行のうち、このアイテムに属するものを下に抜き出す）
-================= 234 passed, 2 warnings in 257.25s (0:04:17) ==================
+（中略: 237 行の結果行のうち、このアイテムに属するものを下に抜き出す）
+================= 237 passed, 2 warnings in 263.25s (0:04:23) ==================
+EXIT=0
 ```
-
-pytest の終了コードは記録できなかった。実行時に `${PIPESTATUS[0]}` で拾おうとしたが、
-このシェルは zsh（`pipestatus`）のため空に展開され、ログ末尾は `EXITCODE=` のままになっている。
-観測できたのは上の集計行と、`collected 234 items` に対して 234 行の結果行がすべて PASSED であること、
-`grep -cE 'FAILED|ERROR|SKIPPED|XFAIL|XPASS'` の出力が 0 であること。
-（前回検証 `8840cd2` のレポートは pytest の終了コードを記録しているが、今回は取れていない。
-以下の trace-check の「終了コード: 0」は、実行時に表示された値をそのまま書いている。）
 
 このアイテムに属する TC を名前に持つ結果行（上の出力からの抜粋、加工なし）:
 
 ```
 tests/e2e/test_morph_ui.py::test_TC_420_1_選択欄のラベル PASSED          [ 10%]
-tests/e2e/test_morph_ui.py::test_TC_420_2_分解前の選択欄 PASSED          [ 11%]
+tests/e2e/test_morph_ui.py::test_TC_420_2_分解前の選択欄 PASSED          [ 10%]
 tests/e2e/test_morph_ui.py::test_TC_421_1_新しい録音に切り替わる PASSED  [ 11%]
 tests/e2e/test_morph_ui.py::test_TC_422_1_現在の録音を切り替えるとグラフとフレームが切り替わる PASSED [ 11%]
 tests/e2e/test_morph_ui.py::test_TC_422_3_切り替えると無声表示も切り替わる PASSED [ 12%]
 tests/e2e/test_morph_ui.py::test_TC_422_2_切り替え後のAPIと元音は選んだ録音 PASSED [ 12%]
 tests/e2e/test_morph_ui.py::test_TC_423_1_相手なしではmorphを送らない PASSED [ 13%]
 tests/e2e/test_morph_ui.py::test_TC_424_1_mixスライダー PASSED           [ 13%]
-tests/e2e/test_morph_ui.py::test_TC_425_1_morphパラメータの送信 PASSED   [ 14%]
+tests/e2e/test_morph_ui.py::test_TC_425_1_morphパラメータの送信 PASSED   [ 13%]
 tests/e2e/test_morph_ui.py::test_TC_426_1_相手の選択でデバウンス後に1回 PASSED [ 14%]
 tests/e2e/test_morph_ui.py::test_TC_426_2_mixの連続変更は最後だけ送る PASSED [ 14%]
 tests/e2e/test_morph_ui.py::test_TC_427_1_相手の包絡線が描かれる PASSED  [ 15%]
 tests/e2e/test_morph_ui.py::test_TC_427_2_相手なしに戻すと消える PASSED  [ 15%]
 tests/e2e/test_morph_ui.py::test_TC_428_1_TC_428_2_リセットとプリセットはmixだけ戻す PASSED [ 16%]
 tests/e2e/test_morph_ui.py::test_TC_429_1_mixのダブルクリックで0 PASSED  [ 16%]
-tests/e2e/test_morph_ui.py::test_TC_430_1_一覧は最新10件 PASSED          [ 17%]
+tests/e2e/test_morph_ui.py::test_TC_430_1_一覧は最新10件 PASSED          [ 16%]
 tests/test_morph.py::test_TC_403_1_伸縮して混ぜる PASSED                 [ 88%]
 tests/test_morph.py::test_TC_403_2_Aが1フレームなら相手の先頭 PASSED     [ 88%]
-tests/test_morph.py::test_TC_405_1_morphは最初に適用される PASSED        [ 88%]
+tests/test_morph.py::test_TC_405_1_morphは最初に適用される PASSED        [ 89%]
 tests/test_morph.py::test_TC_405_2_formantを先にすると結果が変わる PASSED [ 89%]
 tests/test_morph.py::test_TC_400_1_morph省略時は従来どおり PASSED        [ 89%]
 tests/test_morph.py::test_TC_400_2_morph_nullは省略と同じ PASSED         [ 90%]
@@ -120,8 +115,8 @@ tests/test_morph.py::test_TC_402_2_ratio0の合成は混合なしと同一 PASSE
 tests/test_morph.py::test_TC_403_3_APIの混合は式どおり PASSED            [ 92%]
 tests/test_morph.py::test_TC_404_1_ratio1は伸縮後のB PASSED              [ 92%]
 tests/test_morph.py::test_TC_404_2_Bが長くても伸縮後のB PASSED           [ 93%]
-tests/test_morph.py::test_TC_406_1_f0とapはAのもの PASSED                [ 93%]
-tests/test_morph.py::test_TC_406_2_合成音のf0はBに引っ張られない PASSED  [ 94%]
+tests/test_morph.py::test_TC_406_1_foとapはAのもの PASSED                [ 93%]
+tests/test_morph.py::test_TC_406_2_合成音のfoはBに引っ張られない PASSED  [ 94%]
 tests/test_morph.py::test_TC_407_1_TC_407_2_合成の長さはA[5.0] PASSED    [ 94%]
 tests/test_morph.py::test_TC_407_1_TC_407_2_合成の長さはA[1.0] PASSED    [ 94%]
 tests/test_morph.py::test_TC_408_1_包絡の相手が未知なら404 PASSED        [ 95%]
@@ -161,9 +156,9 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 [004-gain-curve] 仕様 18件 / テストケース 30件
 
-[005-ui-affordance] 仕様 13件 / テストケース 21件
+[005-ui-affordance] 仕様 15件 / テストケース 24件
 
-[テストコード] 検出したテストケースID: 235件 (探索起点: .)
+[テストコード] 検出したテストケースID: 238件 (探索起点: .)
 
 孤児: 0件 — 仕様・テスト設計・テストコード・検証はすべて対応が取れています。
 ```
@@ -188,18 +183,19 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 仕様とテスト設計を読んだうえで気づいたこと。判定を左右しないが記録すべきもの。
 
-- **今回の変更は説明文の綴りだけ。** `spec.md` はスコープの「B の fo・ap の利用」と SPEC-406 の本文、
-  `test-design.md` は方針の 1 行と SPEC-406 の見出し・TC-406-1 / TC-406-2 の説明文が `f0` → `fo` に変わった。
-  混合の式・許容差（1e-6、±5%）・観測対象（`pyworld.synthesize` のスパイ）は変わっていない。
-  仕様 23 件 / TC 43 件は前回検証（`8840cd2`）と同数で、判定も 23 件すべて PASS のまま。
+- **003 に関わる `91c7b18` の変更はテスト名 2 件の改名だけ。**
+  `tests/test_morph.py` の `test_TC_406_1_f0とapはAのもの` → `…foとapはAのもの`、
+  `test_TC_406_2_合成音のf0はBに引っ張られない` → `…foはBに引っ張られない`。
+  TC ID（`TC_406_1` / `TC_406_2`）は変わらず、`spec.md` / `test-design.md` は変更されていない。
+  仕様 23 件 / TC 43 件は前回検証（`802aa71`）と同数で、判定も 23 件すべて PASS のまま。
 - **SPEC-406 とテストの対応は保たれている。** 仕様は「再合成に使う fo と ap は A のもの（fo は A の fo × pitch）」、
-  テストは `test_TC_406_1_f0とapはAのもの` / `test_TC_406_2_合成音のf0はBに引っ張られない` で、
-  観測しているのは `pyworld.synthesize` に渡る f0 配列そのもの。`spec.md`（001）の「表記」が pyworld の識別子を
-  除外しているため、`fo`（文書）と `f0`（コード）は同じ対象を指す。
-- 画面文言の変更のうち 003 に関わるのは mix スライダーの `data-tip` だが、003 の仕様は mix について
-  範囲・刻み・初期値・数値表示（SPEC-424）とダブルクリック（SPEC-429）を要求しているだけで、説明文には触れていない。
-  TC-424-1 / TC-429-1 は値と `#mix-value` のテキストを観測しており、いずれも PASSED。
-- TC-422-3（`tests/e2e/test_morph_ui.py:62`）は `#unvoiced` の可視・不可視だけを見ているため、
-  「無声フレームです（fo = 0）」への文言変更では落ちない。PASSED。
-- SPEC-420 は選択欄のラベルが「通し番号・入力元・長さ（秒）を含む」ことを求めており、
-  TC-420-1 はこれを option のテキストで検査している。今回の文言変更はこのラベルには及んでいない。
+  テストが観測しているのは `pyworld.synthesize` に渡る f0 配列そのもの。001 の「表記」が pyworld の識別子を
+  除外しているため、`fo`（文書）と `f0`（コード）は同じ対象を指す。改名は説明語の統一であって観測対象を変えていない。
+- 005 の SPEC-607 / SPEC-614 は mix スライダーの `data-tip`（現在は「…fo（基本周波数）と ap は…」）を縛るが、
+  003 の仕様が mix について要求するのは範囲・刻み・初期値・数値表示（SPEC-424）とダブルクリック（SPEC-429）だけで、
+  説明文には触れていない。TC-424-1 / TC-429-1 はいずれも PASSED。
+- SPEC-420 は選択欄のラベルが「通し番号・入力元（『録音』またはファイル名）・長さ（秒）を含む」ことを求める。
+  005 の SPEC-614 はこのラベルにも `f0` が出ないことを要求しており、実測では Chromium の
+  `document.body.innerText` が `<option>` のテキストを含むため検出可能（005 のレポートの所見に記載）。
+  ただしこれは Chromium の実装に依存した検出であり、テスト設計書には明記されていない。
+- TC-422-3 は `#unvoiced` の可視・不可視だけを見ているため、その文言が変わっても落ちない。PASSED。

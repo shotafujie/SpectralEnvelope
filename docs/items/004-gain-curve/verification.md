@@ -2,11 +2,12 @@
 
 - 検証日: 2026-09-18
 - 検証者: verifier サブエージェント（独立検証）
-- 対象コミット: `802aa71`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
+- 対象コミット: `91c7b18`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
 - 対象仕様: `spec.md` / 対象テスト設計: `test-design.md`
 - 実行環境: macOS 26.5.2、Apple Silicon (arm64)、Python 3.13.12、pytest 9.1.1、ffmpeg 8.1.2
-- 検証の観点: `904147e`（画面の表記）と `802aa71`（仕様書・テスト設計書の表記）で基本周波数の綴りを
-  `f0` から `fo` に変えたことにより、保証の内容が変わっていないか・既存の保証が壊れていないか
+- 検証の観点: `91c7b18` で 005 に SPEC-614 / SPEC-615（画面に見える文言に `f0` の綴りが出ないこと、
+  分解結果の表示）が追加された。その追加分の判定と、既存の保証が壊れていないかの判定。
+  レポートは今回の実行結果で全体を書き直している。
 
 ## 判定サマリ
 
@@ -18,9 +19,9 @@
 | **仕様の総数** | 18 |
 
 判定の根拠は、5 アイテム分をまとめた 1 回のフル実行（`.venv/bin/pytest -v`、
-`234 passed, 2 warnings in 257.25s (0:04:17)`）。
+`237 passed, 2 warnings in 263.25s (0:04:23)`、終了コード 0）。
 出力に FAILED / ERROR / SKIPPED / XFAIL / XPASS の行は 0 件
-（`grep -cE 'FAILED|ERROR|SKIPPED|XFAIL|XPASS'` の出力が 0）。
+（結果行 237 行を数えて、PASSED 以外の行が 0 行）。
 
 判定は仕様単位で、次の手順で機械的に決めた。
 
@@ -31,7 +32,7 @@
 3. 1 件も現れない TC がある、または PASSED 以外の行がある場合は PASS にしない。
 
 設計にあって実行結果に現れない TC は全アイテムで 0 件、実行結果に現れて設計に無い TC も 0 件
-（234 行の結果行から取り出した TC ID 235 種類 = 5 アイテムの設計 TC 235 件と完全一致）。
+（237 行の結果行から取り出した TC ID 238 種類 = 5 アイテムの設計 TC 238 件と完全一致）。
 
 ## 仕様別の判定
 
@@ -63,25 +64,19 @@
 全体の集計行（5 アイテム分を 1 回で実行）:
 
 ```
-$ .venv/bin/pytest -v
+$ .venv/bin/pytest -v > pytest.log 2>&1; echo "EXIT=$?" >> pytest.log
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.12, pytest-9.1.1, pluggy-1.6.0 -- /Users/fujiemon/dev/speech/analyze/SpectralEnvelope/.venv/bin/python3
 rootdir: /Users/fujiemon/dev/speech/analyze/SpectralEnvelope
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.15.1
-collecting ... collected 234 items
+collecting ... collected 237 items
 
-（中略: 234 行の結果行のうち、このアイテムに属するものを下に抜き出す）
-================= 234 passed, 2 warnings in 257.25s (0:04:17) ==================
+（中略: 237 行の結果行のうち、このアイテムに属するものを下に抜き出す）
+================= 237 passed, 2 warnings in 263.25s (0:04:23) ==================
+EXIT=0
 ```
-
-pytest の終了コードは記録できなかった。実行時に `${PIPESTATUS[0]}` で拾おうとしたが、
-このシェルは zsh（`pipestatus`）のため空に展開され、ログ末尾は `EXITCODE=` のままになっている。
-観測できたのは上の集計行と、`collected 234 items` に対して 234 行の結果行がすべて PASSED であること、
-`grep -cE 'FAILED|ERROR|SKIPPED|XFAIL|XPASS'` の出力が 0 であること。
-（前回検証 `8840cd2` のレポートは pytest の終了コードを記録しているが、今回は取れていない。
-以下の trace-check の「終了コード: 0」は、実行時に表示された値をそのまま書いている。）
 
 このアイテムに属する TC を名前に持つ結果行（上の出力からの抜粋、加工なし）:
 
@@ -102,19 +97,19 @@ tests/e2e/test_curve_ui.py::test_TC_518_1_ダブルクリックで0 PASSED      
 tests/e2e/test_curve_ui.py::test_TC_519_1_TC_519_2_リセットとプリセットで全点0 PASSED [  5%]
 tests/e2e/test_curve_ui.py::test_TC_520_1_分解前でも操作できる PASSED    [  6%]
 tests/test_curve.py::test_TC_500_1_curveの既定値は全0 PASSED             [ 69%]
-tests/test_curve.py::test_TC_500_2_curve省略は全0と同じ PASSED           [ 69%]
+tests/test_curve.py::test_TC_500_2_curve省略は全0と同じ PASSED           [ 70%]
 tests/test_curve.py::test_TC_501_1_要素数19は422 PASSED                  [ 70%]
 tests/test_curve.py::test_TC_501_2_文字列を含むと422 PASSED              [ 70%]
-tests/test_curve.py::test_TC_501_3_要素数21はバリデーションエラー PASSED [ 70%]
+tests/test_curve.py::test_TC_501_3_要素数21はバリデーションエラー PASSED [ 71%]
 tests/test_curve.py::test_TC_502_1_curveのクランプ PASSED                [ 71%]
-tests/test_curve.py::test_TC_503_1_ゲインはカーブどおり加算される PASSED [ 71%]
+tests/test_curve.py::test_TC_503_1_ゲインはカーブどおり加算される PASSED [ 72%]
 tests/test_curve.py::test_TC_503_2_API全6dBは全ビン6dB上がる PASSED      [ 72%]
 tests/test_curve.py::test_TC_504_1_制御点での値と区間の線形性 PASSED     [ 72%]
 tests/test_curve.py::test_TC_504_2_範囲外は端の値 PASSED                 [ 73%]
 tests/test_curve.py::test_TC_505_1_curveは最後に適用される PASSED        [ 73%]
-tests/test_curve.py::test_TC_505_2_curveをformantより先にすると結果が変わる PASSED [ 73%]
+tests/test_curve.py::test_TC_505_2_curveをformantより先にすると結果が変わる PASSED [ 74%]
 tests/test_curve.py::test_TC_506_1_全フレームに同じゲイン PASSED         [ 74%]
-tests/test_curve.py::test_TC_506_2_f0とapは変わらない PASSED             [ 74%]
+tests/test_curve.py::test_TC_506_2_foとapは変わらない PASSED             [ 75%]
 ```
 
 ```
@@ -143,9 +138,9 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 [004-gain-curve] 仕様 18件 / テストケース 30件
 
-[005-ui-affordance] 仕様 13件 / テストケース 21件
+[005-ui-affordance] 仕様 15件 / テストケース 24件
 
-[テストコード] 検出したテストケースID: 235件 (探索起点: .)
+[テストコード] 検出したテストケースID: 238件 (探索起点: .)
 
 孤児: 0件 — 仕様・テスト設計・テストコード・検証はすべて対応が取れています。
 ```
@@ -170,14 +165,19 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 仕様とテスト設計を読んだうえで気づいたこと。判定を左右しないが記録すべきもの。
 
-- **今回の変更は説明文の綴りだけ。** `spec.md` は SPEC-506 の本文、`test-design.md` は SPEC-506 の見出しと
-  TC-506-2 の説明文が `f0` → `fo` に変わった。制御点の定義（`f_j = 50 · 400^(j/19)`）・クランプ範囲・
-  許容差（1e-6）は変わっていない。仕様 18 件 / TC 30 件は前回検証（`8840cd2`）と同数で、判定も 18 件すべて PASS のまま。
+- **004 に関わる `91c7b18` の変更はテスト名 1 件の改名だけ。**
+  `tests/test_curve.py` の `test_TC_506_2_f0とapは変わらない` → `…foとapは変わらない`。
+  TC ID（`TC_506_2`）は変わらず、`spec.md` / `test-design.md` は変更されていない。
+  仕様 18 件 / TC 30 件は前回検証（`802aa71`）と同数で、判定も 18 件すべて PASS のまま。
 - **SPEC-506 とテストの対応は保たれている。** 仕様は「`curve` はすべてのフレームに同じゲインを加え、fo と ap は変えない」、
-  テストは `test_TC_506_2_f0とapは変わらない`（`tests/test_curve.py:135`）で、`pyworld.synthesize` に渡る
-  f0 / ap 配列を `curve` 省略時と要素単位で比較している。文書の `fo` とコードの `f0` は同じ対象。
-- 004 の E2E が描画テキストを文字列で読むのは `#curve-readout`（TC-515-1、ドラッグ中の周波数とゲインの表示）だけで、
-  今回変更された文言（ヘッダー・`#unvoiced`・`#meta`・`data-tip`）とは重ならない。
+  テストは `pyworld.synthesize` に渡る f0 / ap 配列を `curve` 省略時と要素単位で比較している。
+  文書の `fo` とコードの `f0` は同じ対象を指す（001 の「表記」の除外規定）。
+- 004 の E2E が描画テキストを文字列で読むのは `#curve-readout`（TC-515-1、ドラッグ中の周波数とゲインの表示）だけ。
+  005 の TC-614-1 / TC-614-2 はドラッグしない状態で検査するため `#curve-readout` は非表示であり、
+  **この表示の文言が `f0` を含むようになっても、005 側では検出されない**（実測は 005 のレポートの所見に記載）。
+  004 側の TC-515-1 は「`round(f_7)` Hz と現在のゲイン」を含むことしか要求しないので、こちらでも検出されない。
+- 005 の SPEC-608 / TC-608-2 は 20 個の制御点が空でない `data-tip` を持つことを要求しており、
+  004 の SPEC-510〜520 とは観測点（`data-gain` / `cx` / `cy`）が重ならない。今回の変更の影響は無い。
 - SPEC-520（分解前でもハンドルを操作できる）の TC-520-1 は、ハンドルが 20 個あること・ドラッグでゲインが 0 でなくなること・
   envelope 要求が出ないことを確認している。設定したゲインが分解後の要求に反映されるかまでは、この TC では追っていない
   （SPEC-516 / SPEC-517 が分解後の経路を押さえている）。
