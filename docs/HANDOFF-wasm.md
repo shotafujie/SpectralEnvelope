@@ -18,6 +18,7 @@ A 案（Python が動くホストに置く）、B 案（Pages + 手元のサー�
   - 5 アイテム 149 仕様すべて PASS、テスト 238 件、受け入れ試聴 M1〜M3 合格（リビジョン `ce54387` で独立検証）
 - `feature/wasm-engine` ブランチを作成済み。**まだ 1 行も実装していない**
 - **Phase 0 スパイク完了（2026-09-18）**: 3 指標とも合格したので C 案で進める。結果は `docs/research/wasm-spike.md`。次は Phase 1（ADR）
+- **Phase 1 完了（2026-09-18）**: ADR-0001（ブラウザ内 WASM エンジン）と ADR-0002（成果物の配布）を Accepted。次は ADR-0001 決定 7 の実機計測（Mac の Chrome / Safari、Pixel の Chrome）
 - この作業のための仕様アイテム（`docs/items/006-*`）は未作成
 
 ## 3. 調べがついていること
