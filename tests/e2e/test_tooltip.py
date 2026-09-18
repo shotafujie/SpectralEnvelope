@@ -222,4 +222,5 @@ def test_TC_614_3_無声表示とドラッグ中とエラー表示にもf0が無
 
 def test_TC_615_1_分解結果の表示(page):
     info = record(page)
-    assert re.search(rf"平均 fo {info['f0_mean']:.1f} Hz", page.inner_text("#meta"))
+    expected = re.escape(f"平均 fo {info['f0_mean']:.1f} Hz")
+    assert re.search(expected, page.inner_text("#meta"))
