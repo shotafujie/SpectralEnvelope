@@ -17,6 +17,7 @@ A 案（Python が動くホストに置く）、B 案（Pages + 手元のサー�
 - `main` は **v0.1.0** をリリース済み。https://github.com/shotafujie/SpectralEnvelope
   - 5 アイテム 149 仕様すべて PASS、テスト 238 件、受け入れ試聴 M1〜M3 合格（リビジョン `ce54387` で独立検証）
 - `feature/wasm-engine` ブランチを作成済み。**まだ 1 行も実装していない**
+- **Phase 0 スパイク完了（2026-09-18）**: 3 指標とも合格したので C 案で進める。結果は `docs/research/wasm-spike.md`。次は Phase 1（ADR）
 - この作業のための仕様アイテム（`docs/items/006-*`）は未作成
 
 ## 3. 調べがついていること
