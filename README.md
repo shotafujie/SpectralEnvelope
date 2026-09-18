@@ -44,6 +44,11 @@ pitch は再合成時に fo（基本周波数）に掛けるだけで、fo と a
 
 E2E は Chromium の偽マイクに合成母音を流して、録音から再生までを確かめる。
 
+## 次にやること
+
+ブラウザ単体で動かして GitHub Pages で試せるようにする作業を予定している。
+調査結果・判断の基準・再開手順は `docs/HANDOFF-wasm.md` にまとめてある。
+
 ## 文書
 
 開発アイテムごとに `docs/items/<アイテム>/` に spec.md（仕様）/ test-design.md（テスト設計）/ verification.md（独立検証レポート）を置く。
