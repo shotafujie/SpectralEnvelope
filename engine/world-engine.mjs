@@ -6,6 +6,14 @@ const FS = 44100;
 const FFT_SIZE = 2048;
 const FRAME_PERIOD = 5;
 const BINS = FFT_SIZE / 2 + 1;
+const MIN_SAMPLES = FS; // 1.0 秒
+const MAX_SAMPLES = 10 * FS; // 10.0 秒
+
+function checkSignal(x) {
+  if (!(x instanceof Float64Array)) throw new TypeError("x は Float64Array で渡してください");
+  if (x.length < MIN_SAMPLES || x.length > MAX_SAMPLES)
+    throw new RangeError(`x の長さは ${MIN_SAMPLES}〜${MAX_SAMPLES} サンプルです（${x.length}）`);
+}
 
 export async function createEngine() {
   const M = await createWorld();
@@ -28,12 +36,13 @@ export async function createEngine() {
     fftSize: FFT_SIZE,
     framePeriod: FRAME_PERIOD,
     bins: BINS,
-    minSamples: FS,
-    maxSamples: 10 * FS,
+    minSamples: MIN_SAMPLES,
+    maxSamples: MAX_SAMPLES,
     get memoryBytes() {
       return M.HEAPU8.buffer.byteLength;
     },
     analyze(x) {
+      checkSignal(x);
       const len = x.length;
       const n = M._world_n_frames(len, FS, FRAME_PERIOD);
       return withBuffers([len, n, n, n * BINS, n * BINS], ([px, pf0, pt, psp, pap]) => {

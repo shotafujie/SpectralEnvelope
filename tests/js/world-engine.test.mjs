@@ -160,3 +160,48 @@ test("10 秒を分解すると memoryBytes が広がり、65536 の倍数のま�
   assert.ok(e.memoryBytes > before);
   assert.ok(isPage(e.memoryBytes));
 });
+
+// ---------------------------------------------------------------- analyze の異常系
+
+// TC-740-1
+test("Float32Array は TypeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.analyze(new Float32Array(44100)), TypeError);
+});
+
+// TC-740-2
+test("通常の配列は TypeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.analyze(Array.from(G.x)), TypeError);
+});
+
+// TC-740-3
+test("undefined は TypeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.analyze(undefined), TypeError);
+});
+
+// TC-741-1
+test("長さ 44099 は RangeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.analyze(G.x.slice(0, 44099)), RangeError);
+});
+
+// TC-741-2
+test("長さ 0 は RangeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.analyze(new Float64Array(0)), RangeError);
+});
+
+// TC-742-1
+test("長さ 441001 は RangeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.analyze(new Float64Array(441001)), RangeError);
+});
+
+// TC-746-1
+test("analyze が例外を投げた後も、同じエンジンで正しく分解できる", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.analyze(new Float64Array(0)), RangeError);
+  assert.ok(maxAbsDiff(e.analyze(G.x.slice()).f0, G.f0) <= 1e-6);
+});
