@@ -57,6 +57,9 @@ export async function createEngine() {
     // n が L より長いとき、残りは 0
     synthesize(f0, sp, ap, n) {
       const frames = f0.length;
+      if (sp.length !== frames * BINS || ap.length !== frames * BINS)
+        throw new RangeError(`sp と ap の長さは f0 の長さ × ${BINS}（${frames * BINS}）です`);
+      if (!(n >= 1 && n <= MAX_SAMPLES)) throw new RangeError(`n は 1〜${MAX_SAMPLES} です（${n}）`);
       const synthLength = Math.floor(((frames * FRAME_PERIOD) / 1000) * FS);
       return withBuffers([frames, frames * BINS, frames * BINS, synthLength], ([pf0, psp, pap, py]) => {
         view(pf0, frames).set(f0);

@@ -264,3 +264,43 @@ test("3 秒の無加工往復で包絡差は 1.0dB 以下", async () => {
   const d = envelopeDiff(a.sp, a.f0, b.sp, b.f0);
   assert.ok(d <= 1.0, `${d} dB`);
 });
+
+// ---------------------------------------------------------------- synthesize の異常系
+
+// TC-744-1
+test("sp の長さが N·F でないと RangeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.synthesize(G.f0, G.sp.slice(0, -1), G.ap, 44100), RangeError);
+});
+
+// TC-744-2
+test("ap の長さが N·F でないと RangeError", async () => {
+  const e = await createEngine();
+  const ap = new Float64Array(G.ap.length + 1);
+  ap.set(G.ap);
+  assert.throws(() => e.synthesize(G.f0, G.sp, ap, 44100), RangeError);
+});
+
+// TC-745-1
+test("n = 0 は RangeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.synthesize(G.f0, G.sp, G.ap, 0), RangeError);
+});
+
+// TC-745-2
+test("n = 441001 は RangeError", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.synthesize(G.f0, G.sp, G.ap, 441001), RangeError);
+});
+
+// TC-745-3
+test("n = 441000 は長さ 441000 を返す", async () => {
+  assert.equal((await createEngine()).synthesize(G.f0, G.sp, G.ap, 441000).length, 441000);
+});
+
+// TC-746-2
+test("synthesize が例外を投げた後も、同じエンジンで正しく再合成できる", async () => {
+  const e = await createEngine();
+  assert.throws(() => e.synthesize(G.f0, G.sp.slice(0, -1), G.ap, 44100), RangeError);
+  assert.ok(maxAbsDiff(e.synthesize(G.f0, G.sp, G.ap, 44100), G.y) <= 1e-6);
+});
