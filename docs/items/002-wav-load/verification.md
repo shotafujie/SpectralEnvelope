@@ -2,9 +2,9 @@
 
 - 検証日: 2026-09-18
 - 検証者: verifier サブエージェント（独立検証）
-- 対象コミット: `3e94891`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
+- 対象コミット: `8840cd2`（`git rev-parse --short HEAD` の出力。作業ツリーはクリーン: `git status --porcelain` の出力なし）
 - 対象仕様: `spec.md` / 対象テスト設計: `test-design.md`
-- 実行環境: macOS 26.5.2、Apple M4 Max、Python 3.13.12、pytest 9.1.1、ffmpeg 8.1.2
+- 実行環境: macOS 26.5.2、Apple Silicon (arm64)、Python 3.13.12、pytest 9.1.1、ffmpeg 8.1.2
 
 ## 判定サマリ
 
@@ -15,20 +15,22 @@
 | BLOCKED | 0 |
 | **仕様の総数** | 7 |
 
-判定の根拠は、全アイテム分をまとめた 1 回のフル実行（`213 passed, 2 warnings in 251.01s (0:04:11)`、終了コード 0）。
+判定の根拠は、5 アイテム分をまとめた 1 回のフル実行（`.venv/bin/pytest -v`、
+`234 passed, 2 warnings in 264.65s (0:04:24)`、終了コード 0）。
 出力に FAILED / ERROR / SKIPPED / XFAIL / XPASS の行は 0 件。
 
-- このアイテムに属する TC を含むテストのうち、成功したものは 9 件（すべて `tests/e2e/test_load.py`）。
-- `test-design.md` に定義された TC は 9 件で、成功したテスト名から取り出した TC ID と過不足なく一致する。
-- `spec.md` の 7 件の仕様には、どれも 1 件以上の TC がある。
-
-## 仕様別の判定
-
-記法は `docs/TRACEABILITY.md` に従う。判定は仕様単位で、次の手順で機械的に決めた。
+判定は仕様単位で、次の手順で機械的に決めた。
 
 1. `test-design.md` からその仕様に属する TC をすべて取り出す。
 2. その TC が `pytest -v` の結果行に 1 件以上現れ、現れたすべての行が PASSED であれば PASS。
 3. 1 件も現れない TC がある、または PASSED 以外の行がある場合は PASS にしない。
+
+設計にあって実行結果に現れない TC は全アイテムで 0 件、実行結果に現れて設計に無い TC も 0 件
+（234 行の結果行から取り出した TC ID 235 種類 = 5 アイテムの設計 TC 235 件と完全一致）。
+
+## 仕様別の判定
+
+記法は `docs/TRACEABILITY.md` に従う。判定は `PASS` / `FAIL` / `BLOCKED` の3値のみ。
 
 - **SPEC-300**: PASS (TC-300-1)
 - **SPEC-301**: PASS (TC-301-1)
@@ -40,14 +42,9 @@
 
 ## 実行したコマンドと出力
 
-```
-$ git rev-parse --short HEAD
-3e94891
-$ git status --porcelain
-（出力なし）
-```
+判定の根拠。**要約せず、実際の出力を貼る。**
 
-フル実行（全アイテム分を 1 回）。下は実行ヘッダ、このアイテムに属する TC を含むテストの行（9 行、省略なし）、警告と集計行。ほかのアイテムのテストの行は各アイテムのレポートに貼った。
+全体の集計行（5 アイテム分を 1 回で実行）:
 
 ```
 $ .venv/bin/pytest -v
@@ -57,34 +54,26 @@ rootdir: /Users/fujiemon/dev/speech/analyze/SpectralEnvelope
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.15.1
-collecting ... collected 213 items
-
-tests/e2e/test_load.py::test_TC_300_1_ファイルを開くボタンと受け付け種別 PASSED [  7%]
-tests/e2e/test_load.py::test_TC_301_1_ファイル名付きで送信される PASSED  [  7%]
-tests/e2e/test_load.py::test_TC_302_1_分解完了後は録音と同じ状態になる PASSED [  8%]
-tests/e2e/test_load.py::test_TC_302_2_録音の後にファイルを読むとファイル側を使う PASSED [  8%]
-tests/e2e/test_load.py::test_TC_303_1_送信中はボタンが無効 PASSED        [  9%]
-tests/e2e/test_load.py::test_TC_304_1_録音中はファイルを開けない PASSED  [  9%]
-tests/e2e/test_load.py::test_TC_305_1_エラー時は前の録音を使い続ける PASSED [ 10%]
-tests/e2e/test_load.py::test_TC_305_2_分解前のエラーでは再生ボタンは無効のまま PASSED [ 10%]
-tests/e2e/test_load.py::test_TC_306_1_同じファイルを2回選べる PASSED     [ 11%]
-
-
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
-  /Users/fujiemon/dev/speech/analyze/SpectralEnvelope/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-    from starlette.testclient import TestClient as TestClient  # noqa
-
-.venv/lib/python3.13/site-packages/starlette/testclient.py:53
-  /Users/fujiemon/dev/speech/analyze/SpectralEnvelope/.venv/lib/python3.13/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
-    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-================= 213 passed, 2 warnings in 251.01s (0:04:11) ==================
+collecting ... collected 234 items
+（中略: 234 行の結果行のうち、このアイテムに属するものを下に抜き出す）
+================= 234 passed, 2 warnings in 264.65s (0:04:24) ==================
 ```
-（終了コード 0）
 
-対象のテストファイル: `tests/e2e/test_load.py`
+終了コード: 0（実行時に `echo "EXIT=$?"` でログ末尾に記録した値）。
+
+このアイテムに属する TC を名前に持つ結果行（上の出力からの抜粋、加工なし）:
+
+```
+tests/e2e/test_load.py::test_TC_300_1_ファイルを開くボタンと受け付け種別 PASSED [  6%]
+tests/e2e/test_load.py::test_TC_301_1_ファイル名付きで送信される PASSED  [  7%]
+tests/e2e/test_load.py::test_TC_302_1_分解完了後は録音と同じ状態になる PASSED [  7%]
+tests/e2e/test_load.py::test_TC_302_2_録音の後にファイルを読むとファイル側を使う PASSED [  8%]
+tests/e2e/test_load.py::test_TC_303_1_送信中はボタンが無効 PASSED        [  8%]
+tests/e2e/test_load.py::test_TC_304_1_録音中はファイルを開けない PASSED  [  8%]
+tests/e2e/test_load.py::test_TC_305_1_エラー時は前の録音を使い続ける PASSED [  9%]
+tests/e2e/test_load.py::test_TC_305_2_分解前のエラーでは再生ボタンは無効のまま PASSED [  9%]
+tests/e2e/test_load.py::test_TC_306_1_同じファイルを2回選べる PASSED     [ 10%]
+```
 
 ```
 $ ~/dev/.claude/hooks/trace-check.sh docs/items/002-wav-load
@@ -97,7 +86,8 @@ $ ~/dev/.claude/hooks/trace-check.sh docs/items/002-wav-load
 
 孤児: 0件 — 仕様・テスト設計・テストコード・検証はすべて対応が取れています。
 ```
-（終了コード 0）
+
+終了コード: 0。
 
 ```
 $ ~/dev/.claude/hooks/trace-check.sh
@@ -111,15 +101,18 @@ $ ~/dev/.claude/hooks/trace-check.sh
 
 [004-gain-curve] 仕様 18件 / テストケース 30件
 
-[テストコード] 検出したテストケースID: 214件 (探索起点: .)
+[005-ui-affordance] 仕様 13件 / テストケース 21件
+
+[テストコード] 検出したテストケースID: 235件 (探索起点: .)
 
 孤児: 0件 — 仕様・テスト設計・テストコード・検証はすべて対応が取れています。
 ```
-（終了コード 0）
+
+終了コード: 0。
 
 ## トレーサビリティ
 
-`trace-check.sh` の出力から転記する。
+`trace-check.sh` の出力から転記する（目視で「0件」と書かない）。
 
 | # | 孤児 | 件数 |
 |---|------|------|
@@ -129,28 +122,17 @@ $ ~/dev/.claude/hooks/trace-check.sh
 | 4 | コードにあるが設計に無いTC | 0 |
 | 5 | 親仕様が存在しないTC | 0 |
 
-スクリプトの出力は「孤児: 0件 — 仕様・テスト設計・テストコード・検証はすべて対応が取れています。」の 1 行で、
-5 種類の孤児はいずれも 1 件も報告されていない。
-
-## 前回の検証（`c5cb26d`）からの差分
-
-`git show --stat 3e94891` で確認した。このアイテムの `spec.md` / `test-design.md` / `tests/e2e/test_load.py` は 1 行も変わっていない。前回と同じ内容を実行して、同じ結果になった。
+（`trace-check.sh` は孤児が 0 件の分類を個別に出力しないため、合計「孤児: 0件」からの転記。）
 
 ## 所見
 
-判定は変えないが、記録しておくべきこと。
+仕様とテスト設計を読んだうえで気づいたこと。判定を左右しないが記録すべきもの。
 
-1. **SPEC-306（同じファイルを続けて 2 回選ぶ）**: TC-306-1 はファイル選択を Playwright の `set_input_files` で行っている。
-   - テストのコメントにあるとおり、実際のブラウザでは `input[type=file]` の `value` が残っていると、同じファイルを選び直しても `change` が発火しない。
-   - `set_input_files` はこの条件に関係なくイベントを発火させる。そのため、実際のファイル選択ダイアログで同じファイルを選び直す操作は再現できていない。
-   - その代わりに TC-306-1 は、読み込み後に `#file` の `value` が空に戻っていることを確かめている（`assert page.eval_on_selector("#file", "el => el.value") == ""`）。これは、実ブラウザで再選択が効くための前提条件にあたる。
-2. **SPEC-301（ファイルの内容の送信）**: 送信された multipart の本文は直接は観測していない。Chromium がファイルを含む multipart の本文を Playwright に渡さないため。代わりに次の 2 つで確かめている。
-   - ページ内で `fetch` をラップし、渡された `FormData` のエントリ（キー名・ファイル名・サイズ）を記録する。
-   - 分解結果の元音 WAV のサンプルが、元ファイルと一致することを確かめる。
-3. **SPEC-302（グラフが有効になる）**: TC-302-1 / TC-302-2 がグラフについて確かめているのは、`#graph` の `data-id` が応答の `id` になることだけ（ヘルパ `load_file` が、この条件を満たすまで待つ）。包絡線の path が描き直されたことは直接は観測していない。
-4. **SPEC-305（エラー時のメッセージ）**: 確かめたのは、分解が 400 を返す 2 つのケースで、エラー表示領域が空でないこと（0.5 秒の wav / ランダムバイトの `.wav`）。メッセージの文言は確かめていない。
-5. **SPEC-300（受け付け種別）**: TC-300-1 は、`accept` 属性に `audio/*` と `.wav` が「含まれる」ことを確かめている。仕様の「受け付け種別は `audio/*` と `.wav` である」は、ほかの種別が無いこととも読める。テストは、ほかの種別が無いことまでは確かめていない。
-
-   所見を書くために `jig/index.html` を読んだところ、107 行目の実際の値は `accept="audio/*,.wav"` で、この 2 つだけだった。ただしこれはテストの結果ではない。
-6. 実行時の警告 2 件（Starlette/httpx と anyio の DeprecationWarning）は、このアイテムのテストとは関係ない。
-
+- 005 による UI 変更後も、002 の 7 仕様はすべて PASS。002 に属する結果行は 9 行で全て PASSED。
+- 005 は `#open-file` に `data-tip` を追加しただけで、TC-300-1 が見る `#file` の `accept` や
+  TC-303-1 / TC-304-1 が見る disabled 状態には影響していない（いずれも PASSED）。
+- TC-301-1 は、Chromium がファイル込みの multipart 本文を Playwright に渡さない制約のため、
+  ページ内で `fetch` をラップして FormData を記録している。送信内容の検査はこのラッパー越しの観測であり、
+  ネットワーク上のバイト列そのものを見ているわけではない（テスト設計に明記済み）。
+- SPEC-305 は「それ以前の分解結果があれば以降の API 呼び出しはその `id` を使い続ける」を求めるが、
+  TC-305-1 が確認するのは envelope 要求の `id` のみで、元音再生の src までは見ていない。仕様よりわずかに狭い。
