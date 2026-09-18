@@ -158,7 +158,7 @@ def test_TC_404_2_Bが長くても伸縮後のB(client, analyze):
         np.testing.assert_allclose(j["modified_db"], stretched_db(client, b, a["frames"], frame), atol=1e-6)
 
 
-def test_TC_406_1_f0とapはAのもの(client, analyze, synth_spy):
+def test_TC_406_1_foとapはAのもの(client, analyze, synth_spy):
     a = analyze(vowel_wav("a", 3.0)).json()
     b = analyze(af.wav_bytes(af.vowel("i", 3.0, f0=200.0))).json()
     synth(client, a["id"], omit=True)
@@ -168,7 +168,7 @@ def test_TC_406_1_f0とapはAのもの(client, analyze, synth_spy):
     np.testing.assert_array_equal(mixed["ap"], base["ap"])
 
 
-def test_TC_406_2_合成音のf0はBに引っ張られない(client, analyze):
+def test_TC_406_2_合成音のfoはBに引っ張られない(client, analyze):
     a = analyze(vowel_wav("a", 3.0)).json()
     b = analyze(af.wav_bytes(af.vowel("i", 3.0, f0=200.0))).json()
     y, _, _ = af.read_wav(synth(client, a["id"], {**morph(b, 0.8), "pitch": 1.2}).content)

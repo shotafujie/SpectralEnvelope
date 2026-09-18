@@ -132,7 +132,7 @@ def test_TC_506_1_全フレームに同じゲイン(client, analyze, synth_spy):
     np.testing.assert_allclose(d, np.broadcast_to(reference_curve(FREQ, c), d.shape), atol=1e-6)
 
 
-def test_TC_506_2_f0とapは変わらない(client, analyze, synth_spy):
+def test_TC_506_2_foとapは変わらない(client, analyze, synth_spy):
     id_ = analyze().json()["id"]
     synth(client, id_, omit=True)
     synth(client, id_, {"curve": random_curve()})

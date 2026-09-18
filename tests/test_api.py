@@ -94,7 +94,7 @@ def test_TC_004_1_TC_004_2_durationはサンプル数割る44100(analyze, n, dur
     assert analyze(af.wav_bytes(x)).json()["duration"] == dur
 
 
-def test_TC_005_1_framesはf0の要素数(analyze):
+def test_TC_005_1_framesはfoの要素数(analyze):
     x, _, _ = af.read_wav(vowel_wav())
     f0, _ = pyworld.harvest(x, FS, frame_period=5.0)
     assert analyze().json()["frames"] == len(f0) == 601
@@ -413,7 +413,7 @@ def test_TC_063_1_formantで合成音のピークが移る(client, analyze):
 
 
 @pytest.mark.parametrize(("pitch", "lo", "hi"), [(1.5, 1.455, 1.545), (0.5, 0.485, 0.515)])
-def test_TC_100_1_TC_100_2_pitchで合成音のf0が変わる(client, analyze, pitch, lo, hi):
+def test_TC_100_1_TC_100_2_pitchで合成音のfoが変わる(client, analyze, pitch, lo, hi):
     id_ = analyze().json()["id"]
     x, _, _ = af.read_wav(client.get(f"/api/original/{id_}").content)
     y, _, _ = af.read_wav(synth(client, id_, {"pitch": pitch}).content)

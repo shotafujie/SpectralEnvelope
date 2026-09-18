@@ -172,3 +172,37 @@ def test_TC_613_1_フレームスライダーは常にグレー(page):
     assert is_gray(accent(page, "#frame"))
     set_slider_frame(page, info["voiced_frames"][0])
     assert is_gray(accent(page, "#frame"))
+
+
+# ---------------------------------------------------------------- 基本周波数の表記
+
+
+def visible_f0(page):
+    """画面に見える文言と data-tip の中の "f0" を集める。"""
+    return page.evaluate(
+        "() => { const hits = [];"
+        " const text = document.body.innerText || '';"
+        " if (text.includes('f0')) hits.push('text');"
+        " for (const el of document.querySelectorAll('[data-tip]'))"
+        "   if (el.dataset.tip.includes('f0')) hits.push(`tip:${el.id || el.className}`);"
+        " return hits; }"
+    )
+
+
+def test_TC_614_2_分解前の画面にf0が無い(page):
+    assert visible_f0(page) == []
+
+
+def test_TC_614_1_分解後の画面にf0が無い(page):
+    record(page)
+    page.hover(slider("pitch"))
+    expect(page.locator("#tooltip")).to_be_visible()
+    assert visible_f0(page) == []
+
+
+def test_TC_615_1_分解結果の表示(page):
+    info = record(page)
+    meta = page.inner_text("#meta")
+    assert "平均 fo" in meta
+    assert f"{info['f0_mean']:.1f}" in meta
+    assert "Hz" in meta
