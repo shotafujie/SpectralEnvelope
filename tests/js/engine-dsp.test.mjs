@@ -191,3 +191,41 @@ test("500Hz 以上の制御点では、近いビンにその制御点の値が�
     assert.ok(Math.abs(d[k] - curve[j]) <= 0.05, `点 ${j}（${f.toFixed(0)}Hz）: ${d[k]} と ${curve[j]}`);
   }
 });
+
+// ---------------------------------------------------------------- formant
+
+// 指定フレームの加工後 log_sp
+function logRowAt(sp, params, frame = FRAME) {
+  const out = applyEnvelope(sp, params);
+  return Array.from({ length: ref.F }, (_, k) => Math.log(out[frame * ref.F + k]));
+}
+const logRowOf = (sp, frame = FRAME) =>
+  Array.from({ length: ref.F }, (_, k) => ref.logSp(sp[frame * ref.F + k]));
+
+// TC-821-1
+test("formant r = 1.25 は k / r の線形補間", () => {
+  const r = 1.25;
+  const expected = ref.interpRow(logRowOf(G.sp), Array.from({ length: ref.F }, (_, k) => k / r));
+  assert.ok(maxDiff(logRowAt(G.sp, { formant: r }), expected) <= 1e-9);
+});
+
+// TC-821-2
+test("formant r = 0.8（縮小方向）も k / r の線形補間", () => {
+  const r = 0.8;
+  const expected = ref.interpRow(logRowOf(G.sp), Array.from({ length: ref.F }, (_, k) => k / r));
+  assert.ok(maxDiff(logRowAt(G.sp, { formant: r }), expected) <= 1e-9);
+});
+
+// TC-822-1
+test("k / r が F − 1 を超えるビンは、加工前の最終ビンの値", () => {
+  const r = 0.8;
+  const out = logRowAt(G.sp, { formant: r });
+  const last = ref.logSp(G.sp[FRAME * ref.F + (ref.F - 1)]);
+  let checked = 0;
+  for (let k = 0; k < ref.F; k++) {
+    if (k / r <= ref.F - 1) continue;
+    assert.ok(Math.abs(out[k] - last) <= 1e-12, `k=${k}`);
+    checked++;
+  }
+  assert.ok(checked > 0, "対象のビンが無い");
+});
