@@ -28,6 +28,13 @@ test("再合成の経路は y と、使った f0 / sp / ap を返す", () => {
 });
 
 // TC-851-1
+test("再合成に使う f0 は、分解時の f0 を pitch 倍したもの", () => {
+  const r = render(engine, analysis(), { pitch: 1.5 }, N_SAMPLES);
+  assert.equal(r.f0.length, N1);
+  for (let i = 0; i < N1; i++) assert.equal(r.f0[i], G.f0[i] * 1.5, `frame ${i}`);
+});
+
+// TC-851-2
 test("pitch 1.5 で再合成した音を再分解すると fo の中央値が 1.5 倍", () => {
   const r = render(engine, analysis(), { pitch: 1.5 }, N_SAMPLES);
   const again = engine.analyze(r.y);
