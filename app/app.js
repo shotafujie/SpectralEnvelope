@@ -149,13 +149,16 @@ mixInput.addEventListener("input", () => setMix(mixInput.value));
 mixInput.addEventListener("dblclick", () => setMix(0));
 partnerSel.addEventListener("change", scheduleEnvelope);
 
+// 1〜9 は平滑化として弱すぎるので 10 にそろえて渡す（SPEC-966）
+const smoothOf = (v) => (v <= 0 ? 0 : Math.min(Math.max(v, 10), 80));
+
 function currentParams() {
   const v = (n) => Number(sliders[n].input.value);
   return {
     formant: v("formant"),
     tilt: v("tilt"),
     bands: [v("band0"), v("band1"), v("band2"), v("band3")],
-    smooth: v("smooth"),
+    smooth: smoothOf(v("smooth")),
     pitch: v("pitch"),
     curve: [...state.curve],
     ...(partnerSel.value ? { morph: { id: partnerSel.value, ratio: Number(mixInput.value) } } : {}),
