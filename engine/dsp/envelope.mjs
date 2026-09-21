@@ -2,6 +2,7 @@
 // 計算はすべて log_sp = ln(sp + 1e-12) の上で行い、最後に exp で戻す。
 import { normalizeParams } from "./params.mjs";
 import { EPS, F, gainLn } from "./curves.mjs";
+import { smoothLog } from "./smooth.mjs";
 
 export { F };
 
@@ -33,7 +34,7 @@ export function applyEnvelope(sp, params, partnerLogSp = null) {
   const log = new Float64Array(sp.length);
   for (let i = 0; i < sp.length; i++) log[i] = Math.log(sp[i] + EPS);
 
-  const shifted = shiftFormant(log, frames, p.formant);
+  const shifted = smoothLog(shiftFormant(log, frames, p.formant), frames, p.smooth);
 
   const gain = gainLn(p);
   const out = new Float64Array(sp.length);

@@ -50,17 +50,17 @@ export function curveGainDb(curve) {
 // 定義どおりの正規直交 DCT-II / IDCT（O(N²)）。実装側は次数を絞って計算するので別の道筋になる
 export function smoothRowRef(row, M) {
   const N = row.length;
-  const s0 = Math.sqrt(1 / (4 * N)) * 2, s = Math.sqrt(1 / (2 * N)) * 2;
+  const a = m => (m === 0 ? Math.sqrt(1 / N) : Math.sqrt(2 / N)); // 正規直交 DCT-II の係数
   const c = new Float64Array(M);
   for (let m = 0; m < M; m++) {
     let acc = 0;
     for (let k = 0; k < N; k++) acc += row[k] * Math.cos((Math.PI * (2 * k + 1) * m) / (2 * N));
-    c[m] = acc * (m === 0 ? s0 : s) * 0.5;
+    c[m] = a(m) * acc;
   }
   const out = new Float64Array(N);
   for (let k = 0; k < N; k++) {
-    let acc = c[0] * Math.sqrt(1 / N);
-    for (let m = 1; m < M; m++) acc += c[m] * Math.sqrt(2 / N) * Math.cos((Math.PI * (2 * k + 1) * m) / (2 * N));
+    let acc = 0;
+    for (let m = 0; m < M; m++) acc += a(m) * c[m] * Math.cos((Math.PI * (2 * k + 1) * m) / (2 * N));
     out[k] = acc;
   }
   return out;

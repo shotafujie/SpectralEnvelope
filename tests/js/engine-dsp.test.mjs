@@ -229,3 +229,26 @@ test("k / r が F − 1 を超えるビンは、加工前の最終ビンの値",
   }
   assert.ok(checked > 0, "対象のビンが無い");
 });
+
+// ---------------------------------------------------------------- 平滑化
+
+// TC-823-1
+test("smooth = 30 は、次数 30 以上の DCT 係数を落とした結果と一致", () => {
+  const expected = ref.smoothRowRef(logRowOf(G.sp), 30);
+  assert.ok(maxDiff(logRowAt(G.sp, { smooth: 30 }), Array.from(expected)) <= 1e-9);
+});
+
+// TC-823-2
+test("smooth = 80 も一致し、30 のときより元の log_sp に近い", () => {
+  const original = logRowOf(G.sp);
+  const at80 = logRowAt(G.sp, { smooth: 80 });
+  assert.ok(maxDiff(at80, Array.from(ref.smoothRowRef(original, 80))) <= 1e-9);
+  const dist = a => a.reduce((s, v, i) => s + (v - original[i]) ** 2, 0);
+  assert.ok(dist(at80) < dist(logRowAt(G.sp, { smooth: 30 })));
+});
+
+// TC-824-1
+test("smooth = 0 は log_sp を変えない", () => {
+  assert.deepEqual(applyEnvelope(G.sp, { smooth: 0 }), applyEnvelope(G.sp, {}));
+  assert.ok(maxDiff(logRowAt(G.sp, { smooth: 0 }), logRowOf(G.sp)) <= 1e-12);
+});
