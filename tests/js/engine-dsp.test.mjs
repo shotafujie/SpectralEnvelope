@@ -118,3 +118,76 @@ test("smooth が NaN だと TypeError", () => {
 test("morph.ratio が文字列だと TypeError", () => {
   assert.throws(() => normalizeParams({ morph: { ratio: "0.5" } }), TypeError);
 });
+
+// ---------------------------------------------------------------- 周波数軸のゲイン
+
+import { applyEnvelope } from "../../engine/dsp/envelope.mjs";
+import { golden1s } from "./golden.mjs";
+import * as ref from "./dsp-ref.mjs";
+
+const G = golden1s();
+const N1 = G.f0.length;
+const FRAME = 100;
+
+// 指定フレームの、加工前後の log_sp の差（長さ 1025）。ゲインは log_sp 上で加算される
+function gainAt(sp, params, frame = FRAME) {
+  const out = applyEnvelope(sp, params);
+  return Array.from({ length: ref.F }, (_, k) =>
+    Math.log(out[frame * ref.F + k]) - ref.logSp(sp[frame * ref.F + k]));
+}
+const lnGain = dbList => dbList.map(v => v * ref.DB_TO_LN);
+
+const maxDiff = (a, b) => a.reduce((m, v, i) => Math.max(m, Math.abs(v - b[i])), 0);
+
+// TC-825-1
+test("tilt = 6 の dB 差は T·log2(max(freq,20)/1000)", () => {
+  assert.ok(maxDiff(gainAt(G.sp, { tilt: 6 }), lnGain(ref.tiltGainDb(6))) <= 1e-9);
+});
+
+// TC-825-2
+test("tilt = −6 の dB 差", () => {
+  assert.ok(maxDiff(gainAt(G.sp, { tilt: -6 }), lnGain(ref.tiltGainDb(-6))) <= 1e-9);
+});
+
+// TC-826-1
+test("bands = [6,0,0,0] は低域だけ 6dB 上がる", () => {
+  const d = gainAt(G.sp, { bands: [6, 0, 0, 0] }).map(v => v / ref.DB_TO_LN);
+  for (let k = 0; k < ref.F; k++) {
+    const f = ref.freq(k);
+    if (f <= 500 * 2 ** (-1 / 3)) assert.ok(Math.abs(d[k] - 6) <= 1e-9, `${f}Hz`);
+    if (f >= 1500 * 2 ** (1 / 3)) assert.ok(Math.abs(d[k]) <= 1e-9, `${f}Hz`);
+  }
+});
+
+// TC-826-2
+test("bands = [3,−3,6,−6] の dB 差は G(f) と一致（クロスフェードを含む）", () => {
+  assert.ok(maxDiff(gainAt(G.sp, { bands: [3, -3, 6, -6] }), lnGain(ref.bandGainDb([3, -3, 6, -6]))) <= 1e-9);
+});
+
+// 固定の種の疑似乱数（テストの再現性のため）
+function randomCurve() {
+  let s = 12345;
+  return Array.from({ length: 20 }, () => {
+    s = (s * 1103515245 + 12345) % 2147483648;
+    return (s / 2147483648) * 24 - 12;
+  });
+}
+
+// TC-827-1
+test("curve の dB 差は C(f) と一致", () => {
+  const curve = randomCurve();
+  assert.ok(maxDiff(gainAt(G.sp, { curve }), lnGain(ref.curveGainDb(curve))) <= 1e-9);
+});
+
+// TC-827-2
+test("500Hz 以上の制御点では、近いビンにその制御点の値が出る", () => {
+  // 隣り合う制御点の差が 0.5dB のなだらかなカーブ。急なカーブだと、ビンの位置のずれがそのまま誤差になる
+  const curve = Array.from({ length: 20 }, (_, j) => -5 + 0.5 * j);
+  const d = gainAt(G.sp, { curve }).map(v => v / ref.DB_TO_LN);
+  for (let j = 0; j < 20; j++) {
+    const f = ref.CURVE_FREQS[j];
+    if (f < 500 || f > ref.FS / 2) continue;
+    const k = Math.round((f * ref.FFT_SIZE) / ref.FS);
+    assert.ok(Math.abs(d[k] - curve[j]) <= 0.05, `点 ${j}（${f.toFixed(0)}Hz）: ${d[k]} と ${curve[j]}`);
+  }
+});

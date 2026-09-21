@@ -36,7 +36,7 @@ v0.1.0 が Python（NumPy / SciPy）で行っている包絡の加工を JS に�
 ## 共通の定義
 
 - **F** = 1025、**N** = フレーム数、**行優先の N×F 配列** = 006 と同じ
-- **log_sp** = `ln(sp + 1e-12)`（001 と同じ）
+- **log_sp** = `ln(sp + 1e-12)`（001 と同じ）。dB のゲイン g を加えることは、log_sp に `g · ln(10) / 10` を加えることを指す（001 の「要件からの修正・補完」2 と同じ）
 - **dB 値** = `10 · log10(sp + 1e-12)`（001 と同じ）
 - **freq[k]** = `k · 44100 / 2048`
 - **params** = `{ formant, smooth, tilt, bands, pitch, curve, morph }` の一部または全部を持つオブジェクト。`morph` は `{ ratio }`
@@ -74,9 +74,9 @@ v0.1.0 が Python（NumPy / SciPy）で行っている包絡の加工を JS に�
 - **SPEC-822** k / r が F − 1 を超えるビンの値は、加工前 log_sp の最終ビンの値である
 - **SPEC-823** `smooth` = M（M ≥ 10）のとき、各フレームの log_sp に正規直交 DCT-II をかけ、次数 M 以上の係数を 0 にして逆変換した結果が加工後 log_sp になる
 - **SPEC-824** `smooth` = 0 のとき、平滑化は log_sp を変化させない
-- **SPEC-825** `tilt` = T のとき、各ビンの dB 値に `T · log2(max(freq, 20) / 1000)` dB が加算される
-- **SPEC-826** `bands` = [g0, g1, g2, g3] のとき、各ビンの dB 値に G(freq) が加算される
-- **SPEC-827** `curve` = [c_0, …, c_19] のとき、各ビンの dB 値に C(freq) が加算される。C(f_j) は c_j と一致し、隣り合う制御点の間では log2(f) に対して線形である
+- **SPEC-825** `tilt` = T のとき、各ビンの log_sp に `T · log2(max(freq, 20) / 1000) · ln(10) / 10` が加算される（dB 値にすると `T · log2(max(freq, 20) / 1000)` dB の加算にあたる。sp が 1e-12 と同じ桁になるビンでは、dB 値の差はこれと厳密には一致しない）
+- **SPEC-826** `bands` = [g0, g1, g2, g3] のとき、各ビンの log_sp に `G(freq) · ln(10) / 10` が加算される
+- **SPEC-827** `curve` = [c_0, …, c_19] のとき、各ビンの log_sp に `C(freq) · ln(10) / 10` が加算される。C(f_j) は c_j と一致し、隣り合う制御点の間では log2(f) に対して線形である
 - **SPEC-828** `morph.ratio` = α のとき、混合後の log_sp は、フレーム i ごとに `(1 − α) · (A の log_sp) + α · (伸縮後の B の log_sp)` である
 - **SPEC-829** 加工は morph → formant → smooth → tilt → bands → curve の順に適用され、全パラメータを同時に指定した結果は、この順に 1 つずつ適用した結果と一致する
 - **SPEC-830** 解釈後の params がすべて初期値で `morph` が無いとき、加工後の sp は加工前の sp と全要素で同一である
