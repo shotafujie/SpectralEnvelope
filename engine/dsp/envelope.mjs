@@ -26,6 +26,20 @@ function shiftFormant(log, frames, r) {
   return out;
 }
 
+// 相手 B の log_sp（N_B×F）を、A のフレーム数 nA に線形伸縮する
+export function stretchPartner(logB, nA) {
+  const framesB = logB.length / F;
+  if (!Number.isInteger(framesB) || framesB < 1)
+    throw new RangeError(`相手の log_sp の長さは ${F} の倍数です（${logB.length}）`);
+  const out = new Float64Array(nA * F);
+  for (let i = 0; i < nA; i++) {
+    const pos = nA > 1 ? (i * (framesB - 1)) / (nA - 1) : 0;
+    const lo = Math.floor(pos), hi = Math.min(lo + 1, framesB - 1), w = pos - lo;
+    for (let k = 0; k < F; k++) out[i * F + k] = (1 - w) * logB[lo * F + k] + w * logB[hi * F + k];
+  }
+  return out;
+}
+
 export function applyEnvelope(sp, params, partnerLogSp = null) {
   const p = normalizeParams(params);
   const frames = sp.length / F;
@@ -33,6 +47,14 @@ export function applyEnvelope(sp, params, partnerLogSp = null) {
 
   const log = new Float64Array(sp.length);
   for (let i = 0; i < sp.length; i++) log[i] = Math.log(sp[i] + EPS);
+
+  // morph: 伸縮済みの相手の log_sp と混ぜる
+  if (p.morph && partnerLogSp) {
+    if (partnerLogSp.length !== log.length)
+      throw new RangeError(`伸縮済みの相手の長さは ${log.length} です（${partnerLogSp.length}）`);
+    const a = p.morph.ratio;
+    for (let i = 0; i < log.length; i++) log[i] = (1 - a) * log[i] + a * partnerLogSp[i];
+  }
 
   const shifted = smoothLog(shiftFormant(log, frames, p.formant), frames, p.smooth);
 

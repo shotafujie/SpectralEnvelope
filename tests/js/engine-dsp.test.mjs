@@ -122,7 +122,7 @@ test("morph.ratio が文字列だと TypeError", () => {
 // ---------------------------------------------------------------- 周波数軸のゲイン
 
 import { applyEnvelope } from "../../engine/dsp/envelope.mjs";
-import { golden1s } from "./golden.mjs";
+import { golden1s, maxAbsDiff as maxAbsDiffArr } from "./golden.mjs";
 import * as ref from "./dsp-ref.mjs";
 
 const G = golden1s();
@@ -251,4 +251,76 @@ test("smooth = 80 も一致し、30 のときより元の log_sp に近い", () 
 test("smooth = 0 は log_sp を変えない", () => {
   assert.deepEqual(applyEnvelope(G.sp, { smooth: 0 }), applyEnvelope(G.sp, {}));
   assert.ok(maxDiff(logRowAt(G.sp, { smooth: 0 }), logRowOf(G.sp)) <= 1e-12);
+});
+
+// ---------------------------------------------------------------- 伸縮と morph
+
+import { stretchPartner } from "../../engine/dsp/envelope.mjs";
+import { partnerLogSp } from "./golden.mjs";
+
+const B = partnerLogSp();
+const NB = B.length / ref.F; // 301
+
+// TC-835-1
+test("伸縮は N_A×F の Float64Array を返す", () => {
+  const s = stretchPartner(B, N1);
+  assert.ok(s instanceof Float64Array);
+  assert.equal(s.length, N1 * ref.F);
+});
+
+// TC-836-1
+test("伸縮はフレーム方向の線形補間", () => {
+  const s = stretchPartner(B, N1);
+  const expected = ref.stretchRef(B, NB, N1);
+  assert.ok(maxAbsDiffArr(s, expected) <= 1e-9);
+});
+
+// TC-836-2
+test("N_A = 1 のとき B のフレーム 0", () => {
+  const s = stretchPartner(B, 1);
+  assert.equal(s.length, ref.F);
+  for (let k = 0; k < ref.F; k++) assert.equal(s[k], B[k]);
+});
+
+// TC-837-1
+test("N_A = N_B なら伸縮後は B と同一", () => {
+  assert.deepEqual(stretchPartner(B, NB), B.slice());
+});
+
+// TC-828-1
+test("morph の混合は (1−α)·A + α·(伸縮後の B)", () => {
+  const alpha = 0.4;
+  const stretched = ref.stretchRef(B, NB, N1);
+  const out = applyEnvelope(G.sp, { morph: { ratio: alpha } }, stretchPartner(B, N1));
+  let m = 0;
+  for (let i = 0; i < G.sp.length; i++) {
+    const expected = (1 - alpha) * ref.logSp(G.sp[i]) + alpha * stretched[i];
+    m = Math.max(m, Math.abs(Math.log(out[i]) - expected));
+  }
+  assert.ok(m <= 1e-9, String(m));
+});
+
+// TC-871-1
+test("相手の log_sp の長さが F の倍数でないと RangeError", () => {
+  assert.throws(() => stretchPartner(B.slice(0, -1), N1), RangeError);
+});
+
+// TC-872-1
+test("ratio 0 は相手なしと同一", () => {
+  const withPartner = applyEnvelope(G.sp, { morph: { ratio: 0 } }, stretchPartner(B, N1));
+  assert.deepEqual(withPartner, applyEnvelope(G.sp, {}));
+});
+
+// TC-873-1
+test("相手に自分自身を与えた α = 0.5 は相手なしと一致", () => {
+  const selfLog = Float64Array.from(G.sp, ref.logSp);
+  const out = applyEnvelope(G.sp, { morph: { ratio: 0.5 } }, stretchPartner(selfLog, N1));
+  assert.ok(maxAbsDiffArr(out, applyEnvelope(G.sp, {}), ref.db) <= 1e-6);
+});
+
+// TC-873-2
+test("相手に自分自身を与えた α = 1.0 も相手なしと一致", () => {
+  const selfLog = Float64Array.from(G.sp, ref.logSp);
+  const out = applyEnvelope(G.sp, { morph: { ratio: 1.0 } }, stretchPartner(selfLog, N1));
+  assert.ok(maxAbsDiffArr(out, applyEnvelope(G.sp, {}), ref.db) <= 1e-6);
 });

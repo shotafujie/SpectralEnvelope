@@ -20,6 +20,7 @@ export function golden1s() {
 }
 
 export const vowel3s = () => readF64("vowel-a-3s.f64");
+export const partnerLogSp = () => readF64("partner-i-1.5s.logsp.f64"); // /i/ 1.5 秒（301×1025）
 export const vowel10s = () => readF64("vowel-a-10s.f64");
 
 export const db = v => 10 * Math.log10(v + 1e-12);

@@ -43,6 +43,11 @@ def main(out):
     # 3 秒と 10 秒はテスト入力だけ（分解結果は照合しない。データが大きくなるため）
     write(out / "vowel-a-3s.f64", af.vowel("a", dur=3.0))
     write(out / "vowel-a-10s.f64", af.vowel("a", dur=10.0))
+    # モーフ相手（/i/ 1.5 秒、301 フレーム）の log_sp。007 の伸縮と混合で使う
+    xb = af.vowel("i", dur=1.5)
+    f0b, tb = pyworld.harvest(xb, FS, frame_period=FRAME_PERIOD)
+    spb = pyworld.cheaptrick(xb, f0b, tb, FS, fft_size=FFT_SIZE)
+    write(out / "partner-i-1.5s.logsp.f64", np.log(spb + 1e-12))
     meta = {
         "source": 'tests/audio_fixtures.py の vowel("a", dur=...)',
         "analysis": {"fs": FS, "fft_size": FFT_SIZE, "frame_period": FRAME_PERIOD,
@@ -50,7 +55,8 @@ def main(out):
                      "y": "pyworld.synthesize(f0, sp, ap, fs, frame_period)[: len(x)]"},
         "format": "リトルエンディアンの Float64。2 次元は行優先",
         "shapes": {f"world-a-1s.{k}.f64": list(a.shape) for k, a in arrays.items()}
-        | {"vowel-a-3s.f64": [3 * FS], "vowel-a-10s.f64": [10 * FS]},
+        | {"vowel-a-3s.f64": [3 * FS], "vowel-a-10s.f64": [10 * FS],
+           "partner-i-1.5s.logsp.f64": list(spb.shape)},
         "versions": {"numpy": np.__version__, "scipy": scipy.__version__, "pyworld": pyworld.__version__},
     }
     (out / "world-meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1, sort_keys=True) + "\n")

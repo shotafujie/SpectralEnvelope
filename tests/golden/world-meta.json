@@ -8,6 +8,10 @@
  },
  "format": "リトルエンディアンの Float64。2 次元は行優先",
  "shapes": {
+  "partner-i-1.5s.logsp.f64": [
+   301,
+   1025
+  ],
   "vowel-a-10s.f64": [
    441000
   ],
