@@ -151,3 +151,41 @@ window.__settle = p => p.then(
   e => ({ ok: false, code: e && e.code, message: String(e && e.message) }),
 );
 """
+
+# v0.1.0 の page.expect_response / page.route の代わり。
+# window.engine を包んで、呼び出しを __calls に記録し、__hold の名前の呼び出しは解決を保留する
+RECORDER = """
+(() => {
+  const NAMES = ['analyze', 'envelope', 'synthesize', 'original', 'list'];
+  window.__calls = [];
+  window.__hold = null;
+  window.__held = [];
+  window.__release = () => { window.__hold = null; window.__held.splice(0).forEach(h => h.go()); };
+  const brief = a => a instanceof ArrayBuffer || ArrayBuffer.isView(a) ? { bytes: a.byteLength }
+    : a instanceof Blob ? { bytes: a.size } : a;
+  const wrap = real => Object.fromEntries(NAMES.map(name => [name, (...args) => {
+    window.__calls.push({ name, args: args.map(brief), t: performance.now() });
+    const p = real[name](...args);
+    if (window.__hold !== name) return p;
+    return new Promise((resolve, reject) => window.__held.push({ name, go: () => p.then(resolve, reject) }));
+  }]));
+  Object.defineProperty(window, 'engine', {
+    configurable: true,
+    get() { return undefined; },
+    set(v) { Object.defineProperty(window, 'engine', { value: wrap(v), writable: true, configurable: true }); },
+  });
+})();
+"""
+
+
+@pytest.fixture
+def ui_page(browser, static_url):
+    """ブラウザ版の画面。アダプタの呼び出しが window.__calls に記録される。"""
+    ctx = browser.new_context(base_url=static_url, permissions=["microphone"])
+    pg = ctx.new_page()
+    pg.set_default_timeout(20000)
+    pg.add_init_script(ADAPTER_HELPERS + RECORDER)
+    pg.goto("/app/index.html")
+    pg.wait_for_function("() => window.engine !== undefined")
+    yield pg
+    ctx.close()
