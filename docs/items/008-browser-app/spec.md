@@ -48,7 +48,7 @@
 
 - **SPEC-900** アダプタは `analyze` / `envelope` / `synthesize` / `original` / `list` の 5 つの関数を持ち、すべて Promise を返す
 - **SPEC-901** `analyze(data, source)` は、音声のバイト列 `data` をデコードして分解し、情報に解決される
-- **SPEC-902** `envelope(id, frame, params)` は、`{ freq, originalDb, modifiedDb, partnerDb }` に解決される（中身は 007 の SPEC-840〜846 と同じ）
+- **SPEC-902** `envelope(id, frame, params)` は、`{ freq, originalDb, modifiedDb, partnerDb }` に解決される（中身は 007 の包絡の出力と同じ）
 - **SPEC-903** `synthesize(id, params)` は、再合成した音のサンプル（Float32Array、44.1kHz モノラル）に解決される
 - **SPEC-904** `original(id)` は、その分解結果の元の音声サンプル（Float32Array）に解決される
 - **SPEC-905** `list()` は、保持している分解結果の情報を、分解した順に並べた配列に解決される
