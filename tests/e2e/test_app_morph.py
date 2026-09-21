@@ -107,6 +107,15 @@ def test_TC_992_1_リセットはmixだけ戻す(ui_page, two):
     assert ui_page.input_value("#partner") == a["id"]
 
 
+def test_TC_992_2_プリセットもmixだけ戻す(ui_page, two):
+    a, _ = two
+    ui_page.select_option("#partner", a["id"])
+    set_slider(ui_page, "mix", 0.7)
+    ui_page.click("button[data-preset='こもる']")
+    assert float(ui_page.input_value("#p-mix")) == 0.0
+    assert ui_page.input_value("#partner") == a["id"]
+
+
 def test_TC_993_1_mixのダブルクリックで0に戻る(ui_page):
     set_slider(ui_page, "mix", 0.5)
     ui_page.dblclick("#p-mix")

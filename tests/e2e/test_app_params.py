@@ -117,6 +117,30 @@ def test_TC_967_2_こもる(ui_page):
         assert values[name] == pytest.approx(DEFAULTS[name]), name
 
 
+def test_TC_967_3_太く(ui_page):
+    ui_page.click("button[data-preset='太く']")
+    values = slider_values(ui_page)
+    assert values["formant"] == pytest.approx(0.85)
+    assert values["tilt"] == pytest.approx(-3.0)
+    for name in ("band0", "band1", "band2", "band3", "smooth", "pitch"):
+        assert values[name] == pytest.approx(DEFAULTS[name]), name
+
+
+def test_TC_967_4_のっぺり(ui_page):
+    ui_page.click("button[data-preset='のっぺり']")
+    values = slider_values(ui_page)
+    assert values["smooth"] == pytest.approx(16)
+    for name in ("formant", "tilt", "band0", "band1", "band2", "band3", "pitch"):
+        assert values[name] == pytest.approx(DEFAULTS[name]), name
+
+
+def test_TC_967_5_素通し(ui_page):
+    for name, v in (("formant", 1.4), ("tilt", -6), ("band2", 5), ("smooth", 30), ("pitch", 0.8)):
+        set_slider(ui_page, name, v)
+    ui_page.click("button[data-preset='素通し']")
+    assert slider_values(ui_page) == pytest.approx(DEFAULTS)
+
+
 # ---------------------------------------------------------------- ゲインカーブ
 
 def test_TC_970_1_ハンドルは20個で対数軸に並ぶ(ui_page):
@@ -147,6 +171,12 @@ def test_TC_972_2_上端を超えるとクランプ(ui_page):
     b = plot_box(ui_page)
     drag_handle(ui_page, 3, svg_y=b["top"] - 40)
     assert curve_gains(ui_page)[3] == 12.0
+
+
+def test_TC_972_3_下端を超えるとクランプ(ui_page):
+    b = plot_box(ui_page)
+    drag_handle(ui_page, 15, svg_y=b["bottom"] + 40)
+    assert curve_gains(ui_page)[15] == -12.0
 
 
 def test_TC_973_1_横に動かしても制御点は変わらない(ui_page):

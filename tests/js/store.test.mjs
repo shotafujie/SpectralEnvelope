@@ -77,6 +77,7 @@ test("list は分解した順の情報を返す", () => {
   assert.deepEqual(s.list().map(i => i.source), ["録音", "a.wav"]);
 });
 
+// TC-927-2、TC-928-3
 test("情報は fs・fftSize・frames・duration・f0Mean・voicedFrames を持つ", () => {
   const s = createStore();
   const a = fakeAnalysis(20, { seconds: 1.5 });
@@ -93,6 +94,7 @@ test("情報は fs・fftSize・frames・duration・f0Mean・voicedFrames を持�
   assert.deepEqual([...info.voicedFrames], voiced);
 });
 
+// TC-928-3
 test("有声フレームが無いとき f0Mean は 0 になる", () => {
   const s = createStore();
   const a = fakeAnalysis(10);

@@ -50,7 +50,7 @@ def test_TC_1031_1_外へ出る要求はアプリ自身のファイルだけ(bro
 
     paths = [u.split(static_url, 1)[-1] for u in seen]
     assert [p for p in paths if p.startswith("/api/")] == []
-    allowed = (".html", ".js", ".mjs", ".wasm", ".f64")
+    allowed = (".html", ".js", ".mjs", ".wasm")
     assert [p for p in paths if not p.split("?")[0].endswith(allowed)] == []
 
 

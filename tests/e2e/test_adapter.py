@@ -25,6 +25,7 @@ def wavs():
     return {
         "1s": b64(af.wav_bytes(af.vowel("a", 1.0))),
         "3s": b64(af.wav_bytes(af.vowel("a", 3.0))),
+        "i3s": b64(af.wav_bytes(af.vowel("i", 3.0))),
         "10s": b64(af.wav_bytes(af.vowel("a", 10.0))),
         "12s": b64(af.wav_bytes(af.vowel("a", 12.0))),
         "short": b64(af.wav_bytes(af.vowel("a", 0.5))),
@@ -214,6 +215,28 @@ def test_TC_904_1_originalは元の音声サンプルを返す(app_page, wavs):
     }""", info["id"])
     assert r["ctor"] == "Float32Array"
     assert r["length"] == int(info["duration"] * 44100)
+
+
+def test_TC_904_2_originalはデコードした波形と一致する(app_page, wavs):
+    r = app_page.evaluate("""async ([a, i]) => {
+        const bytes = b => Uint8Array.from(atob(b), c => c.charCodeAt(0));
+        const infoA = await window.engine.analyze(bytes(a), '録音');
+        const infoI = await window.engine.analyze(bytes(i), '録音');
+        const [ya, yi] = [await window.engine.original(infoA.id), await window.engine.original(infoI.id)];
+
+        // 同じバイト列をこの場でデコードし直したものを基準にする
+        const buf = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(bytes(a).buffer);
+        const ref = buf.getChannelData(0);
+
+        let maxDiff = 0;
+        for (let k = 0; k < ya.length; k++) maxDiff = Math.max(maxDiff, Math.abs(ya[k] - ref[k]));
+        let diffAI = 0;
+        for (let k = 0; k < Math.min(ya.length, yi.length); k++) diffAI = Math.max(diffAI, Math.abs(ya[k] - yi[k]));
+        return { maxDiff, diffAI, len: ya.length, refLen: ref.length };
+    }""", [wavs["3s"], wavs["i3s"]])
+    assert r["len"] == r["refLen"]
+    assert r["maxDiff"] <= 1e-6, r
+    assert r["diffAI"] > 1e-3, r
 
 
 def test_TC_914_1_保持していないmorph先はenvelopeでnot_found(app_page, wavs):
