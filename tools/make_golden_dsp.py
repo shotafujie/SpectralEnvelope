@@ -4,7 +4,7 @@ v0.1.0 の `jig/server.py` の関数（apply_params / stretch_partner / synthesi
 7 つのパラメータの組について、加工後の dB 列・再合成音・（"all" のみ）加工後の sp 全体を書き出す。
 JS 側の移植は、このデータと 1e-6 以内で一致することをもって正しいとする（ADR-0001 決定 4）。
 
-使い方: .venv/bin/python tools/make_golden_dsp.py [出力先ディレクトリ（省略時は tests/golden）]
+使い方: .venv/bin/python tools/make_golden_dsp.py [出力先ディレクトリ（省略時は tests/golden/dsp）]
 """
 
 import json
@@ -42,7 +42,7 @@ def write(path, a):
 
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
-    g = out if (out / "world-a-1s.x.f64").exists() else ROOT / "tests" / "golden"
+    g = ROOT / "tests" / "golden"  # 入力は 006 の照合用データ
     read = lambda name, shape: np.fromfile(g / name, "<f8").reshape(shape)  # noqa: E731
     x = read("world-a-1s.x.f64", -1)
     f0 = read("world-a-1s.f0.f64", -1)
@@ -77,4 +77,4 @@ def main(out):
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "tests" / "golden")
+    main(Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "tests" / "golden" / "dsp")

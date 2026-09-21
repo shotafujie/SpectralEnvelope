@@ -7,19 +7,19 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-GOLDEN = ROOT / "tests" / "golden"
+GOLDEN = ROOT / "tests" / "golden" / "dsp"
 SCRIPT = ROOT / "tools" / "make_golden_dsp.py"
 
 
 def digests(d):
     return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(d.iterdir())
-            if p.is_file() and p.name.startswith("dsp-")}
+            if p.is_file()}
 
 
 def test_TC_863_1_生成スクリプトの出力はコミット済みの照合用データと同一(tmp_path):
     subprocess.run([sys.executable, str(SCRIPT), str(tmp_path)], check=True, cwd=ROOT)
     committed = digests(GOLDEN)
-    assert committed, "tests/golden に dsp-* が無い"
+    assert committed, "tests/golden/dsp が空"
     assert digests(tmp_path) == committed
 
 

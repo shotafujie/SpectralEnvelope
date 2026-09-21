@@ -95,7 +95,7 @@ v0.1.0 が Python（NumPy / SciPy）で行っている包絡の加工を JS に�
 - **SPEC-840** 包絡の出力は、フレーム番号と params を受け取り、`{ freq, originalDb, modifiedDb, partnerDb }` を返す。`freq`、`originalDb`、`modifiedDb` はそれぞれ長さ F の Float64Array
 - **SPEC-841** `freq` の要素 k は `k · 44100 / 2048` である
 - **SPEC-842** `originalDb` は、指定フレームの加工前の sp の dB 値である
-- **SPEC-843** params が初期値のみのとき、`modifiedDb` は `originalDb` と全要素で 1e-6 dB 以内で一致する（`exp` と `ln` の往復の丸めだけが差になる。v0.1.0 の SPEC-042 と同じ許容差）
+- **SPEC-843** params が初期値のみのとき、`modifiedDb` は `originalDb` と全要素で 1e-6 dB 以内で一致する（`exp` と `ln` の往復の丸めだけが差になる。v0.1.0 の同じ趣旨の仕様と同じ許容差）
 - **SPEC-844** 相手を指定したとき、`partnerDb` は指定フレームに対応する伸縮後の B の dB 値（長さ F の Float64Array）である
 - **SPEC-845** 相手を指定しないとき、`partnerDb` は `null` である
 - **SPEC-846** `pitch` は `modifiedDb` を変えない

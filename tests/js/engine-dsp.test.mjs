@@ -467,3 +467,11 @@ test("フレーム N は RangeError", () => {
 test("フレーム N − 1 は例外なし", () => {
   assert.equal(envelopeAt(G.sp, N1 - 1, {}).modifiedDb.length, ref.F);
 });
+
+// TC-838-1
+test("ratio 1 のとき、加工後の dB 列は伸縮後の B の dB 値と一致", () => {
+  const partner = stretchPartner(B, N1);
+  const e = envelopeAt(G.sp, FRAME, { morph: { ratio: 1 } }, partner);
+  const expected = Array.from({ length: ref.F }, (_, k) => partner[FRAME * ref.F + k] / ref.DB_TO_LN);
+  assert.ok(maxDiff(Array.from(e.modifiedDb), expected) <= 1e-6);
+});
