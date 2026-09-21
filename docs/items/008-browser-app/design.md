@@ -8,7 +8,7 @@
 
 | パス | 役割 | 新規 / 変更 |
 |---|---|---|
-| `engine/store.mjs` | 分解結果の保持。id の発行、LRU（10 件）、sp / ap の Float32 化。ブラウザ API を使わない純粋な JS なので Node でテストできる | 新規 |
+| `engine/store.mjs` | 分解結果の保持。id の発行、入れた順に古いものから捨てる保持（10 件）、sp / ap の Float32 化。ブラウザ API を使わない純粋な JS なので Node でテストできる | 新規 |
 | `engine/worker.mjs` | Worker の入口。006 のエンジンと 007 の DSP、`store.mjs` を持ち、メッセージを処理する | 新規 |
 | `engine/adapter.mjs` | メインスレッド側の窓口。Worker を起動し、5 つの関数を Promise で提供する。`envelope` の取り消し（superseded）もここ | 新規 |
 | `engine/decode.mjs` | 音声のバイト列を 44100Hz モノラルの Float64Array にする。`decodeAudioData` と `OfflineAudioContext` を使い、10 秒で切り詰める | 新規 |
@@ -34,7 +34,7 @@
 
 | # | タスク | 緑にする TC |
 |---|---|---|
-| 1 | 保持（id・LRU・Float32 化） | TC-910-1、911-1、912-1、913-1〜2、915-1、916-1、917-1、918-1 |
+| 1 | 保持（id・件数の上限・Float32 化） | TC-910-1、911-1、912-1、913-1〜2、915-1、916-1、917-1、918-1 |
 | 2 | Worker とアダプタの骨組み（`analyze` / `list` / 情報の値） | TC-900-1、901-1、905-1、906-1、909-1、924-1〜929-2 |
 | 3 | デコード | TC-920-1、921-1、922-1、923-1 |
 | 4 | `envelope` / `synthesize` / `original` と morph の解決 | TC-902-1〜2、903-1、904-1、914-1〜2 |
