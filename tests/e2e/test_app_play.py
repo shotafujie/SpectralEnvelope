@@ -14,7 +14,7 @@ from tests.e2e.helpers import (
     hold,
     release,
     set_slider,
-    wait_held,
+    wait_held_call,
 )
 
 
@@ -43,7 +43,7 @@ def test_TC_1001_1_合成待ちはローディング表示(ui_page):
     app_record(ui_page)
     hold(ui_page, "synthesize")
     ui_page.click("#play-mod")
-    wait_held(ui_page)
+    wait_held_call(ui_page)
     expect(ui_page.locator("#play-mod")).to_have_attribute("aria-busy", "true")
     release(ui_page)
     expect(ui_page.locator("#play-mod")).not_to_have_attribute("aria-busy", "true")

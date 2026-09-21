@@ -193,7 +193,8 @@ def hold(page, name):
     page.evaluate("n => { window.__hold = n; }", name)
 
 
-def wait_held(page, timeout=10.0):
+def wait_held_call(page, timeout=10.0):
+    """保留された呼び出しが 1 件以上になるまで待つ（v0.1.0 の wait_held とは別物）。"""
     deadline = time.monotonic() + timeout
     while not page.evaluate("() => window.__held.length"):
         assert time.monotonic() < deadline, "保留された呼び出しがありません"

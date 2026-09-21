@@ -18,7 +18,7 @@ from tests.e2e.helpers import (
     set_slider,
     set_slider_frame,
     wait_calls,
-    wait_held,
+    wait_held_call,
 )
 
 
@@ -42,7 +42,7 @@ def test_TC_932_1_分解中は録音ボタンが無効(ui_page):
     ui_page.click("#rec")
     ui_page.wait_for_timeout(1500)
     ui_page.click("#rec")
-    wait_held(ui_page)
+    wait_held_call(ui_page)
     expect(ui_page.locator("#rec")).to_be_disabled()
     release(ui_page)
     expect(ui_page.locator("#rec")).to_be_enabled()
@@ -77,7 +77,7 @@ def test_TC_936_1_分解中は進行中の表示が出る(ui_page):
     ui_page.click("#rec")
     ui_page.wait_for_timeout(1500)
     ui_page.click("#rec")
-    wait_held(ui_page)
+    wait_held_call(ui_page)
     expect(ui_page.locator("#meta")).to_have_text("分解中…")
     release(ui_page)
     expect(ui_page.locator("#meta")).not_to_have_text("分解中…")
@@ -118,7 +118,7 @@ def test_TC_942_1_ファイルの分解完了後の状態(ui_page, wav_files):
 def test_TC_943_1_ファイルの分解中はボタンが無効(ui_page, wav_files):
     hold(ui_page, "analyze")
     ui_page.set_input_files("#file", str(wav_files["voice"]))
-    wait_held(ui_page)
+    wait_held_call(ui_page)
     expect(ui_page.locator("#open-file")).to_be_disabled()
     expect(ui_page.locator("#rec")).to_be_disabled()
     release(ui_page)
