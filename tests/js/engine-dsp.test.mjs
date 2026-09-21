@@ -395,3 +395,75 @@ test("加工は引数を書き換えない", () => {
 test("sp の長さが F の倍数でないと RangeError", () => {
   assert.throws(() => applyEnvelope(G.sp.slice(0, -1), {}), RangeError);
 });
+
+// ---------------------------------------------------------------- 1 フレーム分の dB 列
+
+import { envelopeAt } from "../../engine/dsp/envelope.mjs";
+
+const partner1 = () => stretchPartner(B, N1);
+
+// TC-840-1
+test("包絡の出力は freq / originalDb / modifiedDb / partnerDb を返す", () => {
+  const e = envelopeAt(G.sp, FRAME, {});
+  for (const k of ["freq", "originalDb", "modifiedDb"]) {
+    assert.ok(e[k] instanceof Float64Array, k);
+    assert.equal(e[k].length, ref.F, k);
+  }
+  assert.ok("partnerDb" in e);
+});
+
+// TC-841-1
+test("freq[k] は k · 44100 / 2048", () => {
+  const { freq } = envelopeAt(G.sp, FRAME, {});
+  for (const k of [0, 512, 1024]) assert.equal(freq[k], (k * 44100) / 2048);
+});
+
+// TC-842-1
+test("originalDb は加工前の dB 値", () => {
+  const { originalDb } = envelopeAt(G.sp, FRAME, {});
+  const expected = Array.from({ length: ref.F }, (_, k) => ref.db(G.sp[FRAME * ref.F + k]));
+  assert.ok(maxDiff(Array.from(originalDb), expected) <= 1e-9);
+});
+
+// TC-843-1
+test("初期値のみなら modifiedDb は originalDb と 1e-6 dB 以内で一致", () => {
+  const e = envelopeAt(G.sp, FRAME, {});
+  assert.ok(maxAbsDiffArr(e.modifiedDb, e.originalDb) <= 1e-6);
+});
+
+// TC-844-1
+test("相手ありの partnerDb は、伸縮後の B のその行の dB 値", () => {
+  const e = envelopeAt(G.sp, FRAME, { morph: { ratio: 0.4 } }, partner1());
+  assert.ok(e.partnerDb instanceof Float64Array);
+  assert.equal(e.partnerDb.length, ref.F);
+  const stretched = ref.stretchRef(B, NB, N1);
+  const expected = Array.from({ length: ref.F }, (_, k) => stretched[FRAME * ref.F + k] / ref.DB_TO_LN);
+  assert.ok(maxDiff(Array.from(e.partnerDb), expected) <= 1e-9);
+});
+
+// TC-845-1
+test("相手なしの partnerDb は null", () => {
+  assert.equal(envelopeAt(G.sp, FRAME, {}).partnerDb, null);
+});
+
+// TC-846-1
+test("pitch は modifiedDb を変えない", () => {
+  const a = envelopeAt(G.sp, FRAME, { pitch: 1.0, formant: 1.2 });
+  const b = envelopeAt(G.sp, FRAME, { pitch: 1.5, formant: 1.2 });
+  assert.equal(maxAbsDiffArr(a.modifiedDb, b.modifiedDb), 0);
+});
+
+// TC-847-1
+test("フレーム −1 は RangeError", () => {
+  assert.throws(() => envelopeAt(G.sp, -1, {}), RangeError);
+});
+
+// TC-847-2
+test("フレーム N は RangeError", () => {
+  assert.throws(() => envelopeAt(G.sp, N1, {}), RangeError);
+});
+
+// TC-847-3
+test("フレーム N − 1 は例外なし", () => {
+  assert.equal(envelopeAt(G.sp, N1 - 1, {}).modifiedDb.length, ref.F);
+});

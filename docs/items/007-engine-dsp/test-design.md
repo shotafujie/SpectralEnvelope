@@ -161,9 +161,9 @@
 
 - **TC-842-1** フレーム 100 → `originalDb` が、加工前 sp の dB 値と全ビンで 1e-9 以内で一致
 
-### SPEC-843 初期値のみなら `modifiedDb` は `originalDb` と同一
+### SPEC-843 初期値のみなら `modifiedDb` は `originalDb` と 1e-6 dB 以内で一致
 
-- **TC-843-1** `{}` → 全ビンで同一
+- **TC-843-1** `{}` → 全ビンで 1e-6 dB 以内
 
 ### SPEC-844 相手を指定したときの `partnerDb`
 

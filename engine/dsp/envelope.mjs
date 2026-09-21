@@ -1,7 +1,7 @@
 // 包絡の加工（007-engine-dsp）。morph → formant → smooth → tilt → bands → curve の順に適用する。
 // 計算はすべて log_sp = ln(sp + 1e-12) の上で行い、最後に exp で戻す。
 import { normalizeParams } from "./params.mjs";
-import { EPS, F, gainLn } from "./curves.mjs";
+import { DB_TO_LN, EPS, F, freqAxis, gainLn } from "./curves.mjs";
 import { smoothLog } from "./smooth.mjs";
 
 export { F };
@@ -73,4 +73,29 @@ export function applyEnvelope(sp, params, partnerLogSp = null) {
   const out = applyEnvelopeLog(log, params, partnerLogSp);
   for (let i = 0; i < out.length; i++) out[i] = Math.exp(out[i]);
   return out;
+}
+
+// 1 フレーム分の dB 列（008 のグラフ描画用）。指定フレームだけを加工するので、長い録音でも軽い。
+// partnerLogSp は伸縮済み（N×F）。指定が無ければ partnerDb は null
+export function envelopeAt(sp, frame, params, partnerLogSp = null) {
+  const frames = sp.length / F;
+  if (!Number.isInteger(frames)) throw new RangeError(`sp の長さは ${F} の倍数です（${sp.length}）`);
+  if (!Number.isInteger(frame) || frame < 0 || frame >= frames)
+    throw new RangeError(`frame は 0〜${frames - 1} です（${frame}）`);
+
+  const base = frame * F;
+  const row = new Float64Array(F);
+  for (let k = 0; k < F; k++) row[k] = Math.log(sp[base + k] + EPS);
+  const partnerRow = partnerLogSp ? partnerLogSp.slice(base, base + F) : null;
+  const modified = applyEnvelopeLog(row, params, partnerRow);
+
+  // 加工後と相手は log_sp から直接 dB へ換算する（1e-12 を足し直さない。足すと初期値でも originalDb と食い違う）
+  const original = new Float64Array(F);
+  for (let k = 0; k < F; k++) original[k] = 10 * Math.log10(sp[base + k] + EPS);
+  return {
+    freq: freqAxis(),
+    originalDb: original,
+    modifiedDb: modified.map(v => v / DB_TO_LN),
+    partnerDb: partnerRow ? partnerRow.map(v => v / DB_TO_LN) : null,
+  };
 }
