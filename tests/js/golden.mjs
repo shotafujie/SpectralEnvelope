@@ -22,6 +22,7 @@ export function golden1s() {
 export const vowel3s = () => readF64("vowel-a-3s.f64");
 export const partnerLogSp = () => readF64("partner-i-1.5s.logsp.f64"); // /i/ 1.5 秒（301×1025）
 export const vowel10s = () => readF64("vowel-a-10s.f64");
+export const vowelWithGap = () => readF64("vowel-a-gap-2.5s.f64"); // 前後 0.5 秒が無音（無声フレームを含む）
 
 export const db = v => 10 * Math.log10(v + 1e-12);
 

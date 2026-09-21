@@ -43,6 +43,8 @@ def main(out):
     # 3 秒と 10 秒はテスト入力だけ（分解結果は照合しない。データが大きくなるため）
     write(out / "vowel-a-3s.f64", af.vowel("a", dur=3.0))
     write(out / "vowel-a-10s.f64", af.vowel("a", dur=10.0))
+    # 無声区間を含む入力（前後 0.5 秒の無音 + 母音 1.5 秒）。007 の pitch のテストで使う
+    write(out / "vowel-a-gap-2.5s.f64", af.with_silence(af.vowel("a", dur=1.5), pad=0.5))
     # モーフ相手（/i/ 1.5 秒、301 フレーム）の log_sp。007 の伸縮と混合で使う
     xb = af.vowel("i", dur=1.5)
     f0b, tb = pyworld.harvest(xb, FS, frame_period=FRAME_PERIOD)
@@ -56,7 +58,8 @@ def main(out):
         "format": "リトルエンディアンの Float64。2 次元は行優先",
         "shapes": {f"world-a-1s.{k}.f64": list(a.shape) for k, a in arrays.items()}
         | {"vowel-a-3s.f64": [3 * FS], "vowel-a-10s.f64": [10 * FS],
-           "partner-i-1.5s.logsp.f64": list(spb.shape)},
+           "partner-i-1.5s.logsp.f64": list(spb.shape),
+           "vowel-a-gap-2.5s.f64": [int(2.5 * FS)]},
         "versions": {"numpy": np.__version__, "scipy": scipy.__version__, "pyworld": pyworld.__version__},
     }
     (out / "world-meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
