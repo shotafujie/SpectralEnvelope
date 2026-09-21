@@ -238,3 +238,16 @@ def app_info(page):
         const id = document.querySelector('#graph').dataset.id;
         return (await window.engine.list()).find(i => i.id === id) || null;
     }""")
+
+
+def app_wait_playing(page, source, timeout=10000):
+    """指定の音が鳴り始めるまで待つ。"""
+    page.wait_for_function(
+        "src => { const p = document.querySelector('#player');"
+        " return p.dataset.source === src && p.dataset.playing !== '0'; }",
+        arg=source, polling=20, timeout=timeout,
+    )
+
+
+def app_playing_count(page):
+    return int(page.get_attribute("#player", "data-playing"))

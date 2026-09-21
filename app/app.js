@@ -35,6 +35,7 @@ const PRESETS = [
   ["のっぺり", { smooth: 16 }, "smooth 16 で包絡を平坦にする"],
 ];
 
+const FS = 44100;
 const MAX_RECORD_MS = 10000;
 const DEBOUNCE_MS = 300;
 const NYQUIST = 22050;
@@ -480,10 +481,88 @@ recBtn.addEventListener("click", () => {
 
 // ---------------------------------------------------------------- 再生
 
-// TODO(008 タスク 11): AudioBuffer での再生をここへ移す（SPEC-1000〜1006）
+// WAV は作らない。アダプタが返すサンプルをそのまま AudioBuffer で鳴らす（SPEC-1006）
+const playerEl = $("#player");
+const playing = new Set();
+let audioCtx = null;
+
+function showPlaying() {
+  playerEl.dataset.playing = String(playing.size);
+}
+
 function stopPlayback() {
   state.playToken++;
+  for (const node of playing) {
+    node.onended = null;
+    try { node.stop(); } catch (_) { /* すでに終わっている */ }
+  }
+  playing.clear();
+  showPlaying();
 }
+
+function play(samples, source) {
+  if (!samples.length) return;
+  audioCtx = audioCtx || new AudioContext();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  const buffer = audioCtx.createBuffer(1, samples.length, FS);
+  buffer.copyToChannel(samples, 0);
+  const node = audioCtx.createBufferSource();
+  node.buffer = buffer;
+  node.connect(audioCtx.destination);
+  node.onended = () => { playing.delete(node); showPlaying(); };
+  playing.add(node);
+  playerEl.dataset.source = source;
+  showPlaying();
+  node.start();
+}
+
+async function playOriginal() {
+  if (!state.info) return;
+  clearError();
+  stopPlayback();
+  state.lastPlayed = "original";
+  const token = state.playToken;
+  try {
+    const samples = await window.engine.original(state.info.id);
+    if (token !== state.playToken) return;  // 待っている間に別の再生が始まった
+    play(samples, "original");
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+async function playProcessed() {
+  if (!state.info) return;
+  clearError();
+  stopPlayback();
+  state.lastPlayed = "processed";
+  const token = state.playToken;
+  playModBtn.setAttribute("aria-busy", "true");
+  playModBtn.textContent = "合成中…";
+  try {
+    const samples = await window.engine.synthesize(state.info.id, currentParams());
+    if (token !== state.playToken) return;
+    play(samples, "processed");
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    playModBtn.removeAttribute("aria-busy");
+    playModBtn.textContent = "加工音";
+  }
+}
+
+playOrigBtn.addEventListener("click", playOriginal);
+playModBtn.addEventListener("click", playProcessed);
+
+// Space は A/B 切り替え専用。フォーカス中のボタン押下やスクロールを起こさない。
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space") return;
+  e.preventDefault();
+  if (e.repeat || !state.info) return;
+  if (state.lastPlayed === "original") playProcessed();
+  else playOriginal();
+}, true);
+document.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); }, true);
 
 // ---------------------------------------------------------------- ツールチップ
 

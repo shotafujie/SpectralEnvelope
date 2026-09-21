@@ -156,6 +156,13 @@ window.__settle = p => p.then(
 # window.engine を包んで、呼び出しを __calls に記録し、__hold の名前の呼び出しは解決を保留する
 RECORDER = """
 (() => {
+  // 再生に WAV の Blob URL を使っていないことを見るため（SPEC-1006）
+  window.__objectUrls = [];
+  const createObjectURL = URL.createObjectURL.bind(URL);
+  URL.createObjectURL = obj => {
+    window.__objectUrls.push((obj && obj.type) || typeof obj);
+    return createObjectURL(obj);
+  };
   const NAMES = ['analyze', 'envelope', 'synthesize', 'original', 'list'];
   window.__calls = [];
   window.__hold = null;
