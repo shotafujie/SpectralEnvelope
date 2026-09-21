@@ -299,3 +299,54 @@ def test_TC_911_1_11件目を分解すると1件目はnot_foundになる(ten_ids
     assert r["ok"] is False and r["code"] == "not_found"
     listed = page.evaluate("() => window.engine.list()")
     assert [i["id"] for i in listed] == ids[1:]
+
+
+# ---------------------------------------------------------------- 取り消しと順序
+
+def test_TC_907_1_古いenvelopeはsupersededで拒否される(app_page, wavs):
+    info = analyze(app_page, wavs["3s"])
+    first, second = app_page.evaluate("""async (id) => {
+        const a = window.__settle(window.engine.envelope(id, 100, { tilt: 3 }));
+        const b = window.__settle(window.engine.envelope(id, 100, { tilt: 6 }));
+        return [await a, await b];
+    }""", info["id"])
+    assert first["ok"] is False and first["code"] == "superseded"
+    assert second["ok"] is True
+
+
+def test_TC_907_2_後から呼んだenvelopeの結果は単独で呼んだときと同じ(app_page, wavs):
+    info = analyze(app_page, wavs["3s"])
+    r = app_page.evaluate("""async (id) => {
+        const a = window.__settle(window.engine.envelope(id, 100, { tilt: 3 }));
+        const b = window.engine.envelope(id, 100, { tilt: 6 });
+        await a;
+        const raced = Array.from((await b).modifiedDb);
+        const alone = Array.from((await window.engine.envelope(id, 100, { tilt: 6 })).modifiedDb);
+        return { raced, alone };
+    }""", info["id"])
+    assert np.array_equal(np.array(r["raced"]), np.array(r["alone"]))
+
+
+def test_TC_908_1_synthesizeは取り消されず2つとも解決する(app_page, wavs):
+    info = analyze(app_page, wavs["3s"])
+    both = app_page.evaluate("""async (id) => {
+        const a = window.__settle(window.engine.synthesize(id, { tilt: 3 }));
+        const b = window.__settle(window.engine.synthesize(id, { tilt: 6 }));
+        const [x, y] = [await a, await b];
+        return [{ ok: x.ok, code: x.code, length: x.value && x.value.length },
+                { ok: y.ok, code: y.code, length: y.value && y.value.length }];
+    }""", info["id"])
+    assert [r["ok"] for r in both] == [True, True], both
+    assert [r["length"] for r in both] == [round(info["duration"] * 44100)] * 2
+
+
+def test_TC_908_2_analyzeは取り消されず2つとも解決する(app_page, wavs):
+    r = app_page.evaluate("""async (b) => {
+        const a1 = window.__settle(window.engine.analyze(window.__bytes(b), '録音'));
+        const a2 = window.__settle(window.engine.analyze(window.__bytes(b), '録音'));
+        const both = [await a1, await a2];
+        return { both, count: (await window.engine.list()).length };
+    }""", wavs["1s"])
+    assert [x["ok"] for x in r["both"]] == [True, True], r
+    assert r["both"][0]["value"]["id"] != r["both"][1]["value"]["id"]
+    assert r["count"] == 2
