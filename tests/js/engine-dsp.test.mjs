@@ -121,7 +121,7 @@ test("morph.ratio が文字列だと TypeError", () => {
 
 // ---------------------------------------------------------------- 周波数軸のゲイン
 
-import { applyEnvelope } from "../../engine/dsp/envelope.mjs";
+import { applyEnvelope, applyEnvelopeLog } from "../../engine/dsp/envelope.mjs";
 import { golden1s, maxAbsDiff as maxAbsDiffArr } from "./golden.mjs";
 import * as ref from "./dsp-ref.mjs";
 
@@ -249,8 +249,8 @@ test("smooth = 80 も一致し、30 のときより元の log_sp に近い", () 
 
 // TC-824-1
 test("smooth = 0 は log_sp を変えない", () => {
-  assert.deepEqual(applyEnvelope(G.sp, { smooth: 0 }), applyEnvelope(G.sp, {}));
-  assert.ok(maxDiff(logRowAt(G.sp, { smooth: 0 }), logRowOf(G.sp)) <= 1e-12);
+  const log = Float64Array.from(G.sp, ref.logSp);
+  assert.equal(maxAbsDiffArr(applyEnvelopeLog(log, { smooth: 0 }), log), 0);
 });
 
 // ---------------------------------------------------------------- 伸縮と morph
@@ -284,7 +284,7 @@ test("N_A = 1 のとき B のフレーム 0", () => {
 
 // TC-837-1
 test("N_A = N_B なら伸縮後は B と同一", () => {
-  assert.deepEqual(stretchPartner(B, NB), B.slice());
+  assert.equal(maxAbsDiffArr(stretchPartner(B, NB), B), 0);
 });
 
 // TC-828-1
@@ -307,8 +307,9 @@ test("相手の log_sp の長さが F の倍数でないと RangeError", () => {
 
 // TC-872-1
 test("ratio 0 は相手なしと同一", () => {
-  const withPartner = applyEnvelope(G.sp, { morph: { ratio: 0 } }, stretchPartner(B, N1));
-  assert.deepEqual(withPartner, applyEnvelope(G.sp, {}));
+  const log = Float64Array.from(G.sp, ref.logSp);
+  const withPartner = applyEnvelopeLog(log, { morph: { ratio: 0 } }, stretchPartner(B, N1));
+  assert.equal(maxAbsDiffArr(withPartner, applyEnvelopeLog(log, {})), 0);
 });
 
 // TC-873-1
@@ -323,4 +324,74 @@ test("相手に自分自身を与えた α = 1.0 も相手なしと一致", () =
   const selfLog = Float64Array.from(G.sp, ref.logSp);
   const out = applyEnvelope(G.sp, { morph: { ratio: 1.0 } }, stretchPartner(selfLog, N1));
   assert.ok(maxAbsDiffArr(out, applyEnvelope(G.sp, {}), ref.db) <= 1e-6);
+});
+
+// ---------------------------------------------------------------- 加工の組み立て
+
+const ALL = { formant: 1.2, smooth: 30, tilt: 3, bands: [2, -2, 4, -4], curve: Array.from({ length: 20 }, (_, j) => -3 + 0.3 * j), pitch: 1.3, morph: { ratio: 0.4 } };
+
+// TC-819-1
+test("sp 形式は exp(log 形式(ln(sp + 1e-12))) と同一", () => {
+  const partner = stretchPartner(B, N1);
+  const viaLog = applyEnvelopeLog(Float64Array.from(G.sp, ref.logSp), ALL, partner).map(Math.exp);
+  assert.equal(maxAbsDiffArr(applyEnvelope(G.sp, ALL, partner), viaLog), 0);
+});
+
+// TC-820-1
+test("sp 形式は同じ形の Float64Array を返し、値は有限で正", () => {
+  const out = applyEnvelope(G.sp, ALL, stretchPartner(B, N1));
+  assert.ok(out instanceof Float64Array);
+  assert.equal(out.length, N1 * ref.F);
+  assert.ok(out.every(v => Number.isFinite(v) && v > 0));
+});
+
+// TC-820-2
+test("log 形式も同じ形の Float64Array を返し、値は有限", () => {
+  const out = applyEnvelopeLog(Float64Array.from(G.sp, ref.logSp), ALL, stretchPartner(B, N1));
+  assert.ok(out instanceof Float64Array);
+  assert.equal(out.length, N1 * ref.F);
+  assert.ok(out.every(Number.isFinite));
+});
+
+// TC-829-1
+test("全パラメータ同時指定は、morph → formant → smooth → tilt → bands → curve の順の逐次適用と一致", () => {
+  const partner = stretchPartner(B, N1);
+  const log = Float64Array.from(G.sp, ref.logSp);
+  const step = [
+    l => applyEnvelopeLog(l, { morph: ALL.morph }, partner),
+    l => applyEnvelopeLog(l, { formant: ALL.formant }),
+    l => applyEnvelopeLog(l, { smooth: ALL.smooth }),
+    l => applyEnvelopeLog(l, { tilt: ALL.tilt }),
+    l => applyEnvelopeLog(l, { bands: ALL.bands }),
+    l => applyEnvelopeLog(l, { curve: ALL.curve }),
+  ].reduce((l, f) => f(l), log);
+  assert.ok(maxAbsDiffArr(applyEnvelopeLog(log, ALL, partner), step) <= 1e-9);
+});
+
+// TC-829-2
+test("順序を入れ替えると結果が変わる（tilt を formant の前に適用）", () => {
+  const log = Float64Array.from(G.sp, ref.logSp);
+  const swapped = applyEnvelopeLog(applyEnvelopeLog(log, { tilt: ALL.tilt }), { formant: ALL.formant });
+  const inOrder = applyEnvelopeLog(applyEnvelopeLog(log, { formant: ALL.formant }), { tilt: ALL.tilt });
+  assert.ok(maxAbsDiffArr(swapped, inOrder) > 0.01);
+});
+
+// TC-830-1
+test("初期値のみなら log 形式は入力を変えない", () => {
+  const log = Float64Array.from(G.sp, ref.logSp);
+  assert.equal(maxAbsDiffArr(applyEnvelopeLog(log, {}), log), 0);
+});
+
+// TC-831-1
+test("加工は引数を書き換えない", () => {
+  const sp = G.sp.slice(), partner = stretchPartner(B, N1);
+  const spCopy = sp.slice(), partnerCopy = partner.slice();
+  applyEnvelope(sp, ALL, partner);
+  assert.equal(maxAbsDiffArr(sp, spCopy), 0);
+  assert.equal(maxAbsDiffArr(partner, partnerCopy), 0);
+});
+
+// TC-870-1
+test("sp の長さが F の倍数でないと RangeError", () => {
+  assert.throws(() => applyEnvelope(G.sp.slice(0, -1), {}), RangeError);
 });

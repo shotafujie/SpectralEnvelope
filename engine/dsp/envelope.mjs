@@ -40,14 +40,14 @@ export function stretchPartner(logB, nA) {
   return out;
 }
 
-export function applyEnvelope(sp, params, partnerLogSp = null) {
+// 加工の本体（log 形式）。段を分けて逐次適用するときもこちらを使う。
+// sp 形式を繰り返すと、1e-12 を足す操作が段ごとに入り、平滑化がその差を全ビンに広げる（SPEC-819）
+export function applyEnvelopeLog(logSp, params, partnerLogSp = null) {
   const p = normalizeParams(params);
-  const frames = sp.length / F;
-  if (!Number.isInteger(frames)) throw new RangeError(`sp の長さは ${F} の倍数です（${sp.length}）`);
+  const frames = logSp.length / F;
+  if (!Number.isInteger(frames)) throw new RangeError(`log_sp の長さは ${F} の倍数です（${logSp.length}）`);
 
-  const log = new Float64Array(sp.length);
-  for (let i = 0; i < sp.length; i++) log[i] = Math.log(sp[i] + EPS);
-
+  const log = logSp.slice();
   // morph: 伸縮済みの相手の log_sp と混ぜる
   if (p.morph && partnerLogSp) {
     if (partnerLogSp.length !== log.length)
@@ -59,8 +59,18 @@ export function applyEnvelope(sp, params, partnerLogSp = null) {
   const shifted = smoothLog(shiftFormant(log, frames, p.formant), frames, p.smooth);
 
   const gain = gainLn(p);
-  const out = new Float64Array(sp.length);
+  const out = new Float64Array(logSp.length);
   for (let i = 0; i < frames; i++)
-    for (let k = 0; k < F; k++) out[i * F + k] = Math.exp(shifted[i * F + k] + gain[k]);
+    for (let k = 0; k < F; k++) out[i * F + k] = shifted[i * F + k] + gain[k];
+  return out;
+}
+
+// sp 形式: exp(log 形式(ln(sp + EPS)))
+export function applyEnvelope(sp, params, partnerLogSp = null) {
+  if (!Number.isInteger(sp.length / F)) throw new RangeError(`sp の長さは ${F} の倍数です（${sp.length}）`);
+  const log = new Float64Array(sp.length);
+  for (let i = 0; i < sp.length; i++) log[i] = Math.log(sp[i] + EPS);
+  const out = applyEnvelopeLog(log, params, partnerLogSp);
+  for (let i = 0; i < out.length; i++) out[i] = Math.exp(out[i]);
   return out;
 }
