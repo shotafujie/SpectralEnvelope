@@ -264,3 +264,8 @@ def test_TC_958_1_フレーム変更で包絡が引き直される(ui_page):
     set_slider_frame(ui_page, target)
     assert wait_calls(ui_page, "envelope", 1) == 1
     assert calls(ui_page, "envelope")[-1]["args"][1] == target
+
+
+def test_TC_929_2_ファイル読み込みのsourceはファイル名(ui_page, wav_files):
+    info = app_load_file(ui_page, wav_files["voice"])
+    assert info["source"] == "voice.wav"
