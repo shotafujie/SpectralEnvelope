@@ -1,9 +1,12 @@
 """E2E 共通のフィクスチャ: 実サーバー + 偽マイク付き Chromium + 要求の記録。"""
 
+import functools
+import http.server
 import json
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -108,3 +111,43 @@ def wav_files(tmp_path_factory):
         paths[key] = d / name
         paths[key].write_bytes(data)
     return paths
+
+# ---------------------------------------------------------------- ブラウザ版（008-browser-app）
+
+class _Static(http.server.SimpleHTTPRequestHandler):
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
+                      ".mjs": "text/javascript", ".wasm": "application/wasm"}
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture(scope="session")
+def static_url():
+    """リポジトリ直下を静的に返すだけのサーバー（サーバー側の処理を持たない）。"""
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(_Static, directory=str(ROOT)))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+
+
+@pytest.fixture
+def app_page(browser, static_url):
+    """ブラウザ版のページ。window.engine（アダプタ）が使える。"""
+    ctx = browser.new_context(base_url=static_url, permissions=["microphone"])
+    pg = ctx.new_page()
+    pg.set_default_timeout(20000)
+    pg.add_init_script(ADAPTER_HELPERS)
+    pg.goto("/app/index.html")
+    yield pg
+    ctx.close()
+
+
+# テストからアダプタを呼ぶための道具。拒否は { ok: false, code } に畳んで受け取る
+ADAPTER_HELPERS = """
+window.__bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+window.__settle = p => p.then(
+  value => ({ ok: true, value }),
+  e => ({ ok: false, code: e && e.code, message: String(e && e.message) }),
+);
+"""

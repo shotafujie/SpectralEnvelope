@@ -11,6 +11,7 @@
 | `engine/store.mjs` | 分解結果の保持。id の発行、入れた順に古いものから捨てる保持（10 件）、sp / ap の Float32 化。ブラウザ API を使わない純粋な JS なので Node でテストできる | 新規 |
 | `engine/worker.mjs` | Worker の入口。006 のエンジンと 007 の DSP、`store.mjs` を持ち、メッセージを処理する | 新規 |
 | `engine/adapter.mjs` | メインスレッド側の窓口。Worker を起動し、5 つの関数を Promise で提供する。`envelope` の取り消し（superseded）もここ | 新規 |
+| `engine/errors.mjs` | 拒否の理由（`code`）を持つ Error を作る小物。アダプタ・Worker・デコードで共有する | 新規 |
 | `engine/decode.mjs` | 音声のバイト列を 44100Hz モノラルの Float64Array にする。`decodeAudioData` と `OfflineAudioContext` を使い、10 秒で切り詰める | 新規 |
 | `app/index.html` | 画面。`jig/index.html` を写して、`fetch("/api/...")` をアダプタ呼び出しに置き換える | 新規 |
 | `app/app.js` | 画面のスクリプト（`index.html` から分ける） | 新規 |
