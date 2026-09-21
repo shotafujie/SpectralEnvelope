@@ -48,3 +48,11 @@ export function envelopeDiff(spA, f0A, spB, f0B) {
   }
   return sum / count;
 }
+
+// DSP の照合用データ（007-engine-dsp）
+export const goldenDsp = name => ({
+  db: readF64(`dsp-${name}.db.f64`),   // 5 フレーム × 1025（10·log10(sp)、1e-12 を足さない）
+  y: readF64(`dsp-${name}.y.f64`),
+});
+export const goldenDspSpAll = () => readF64("dsp-all.sp.f64");
+export const dspMeta = () => JSON.parse(readFileSync(path.join(GOLDEN, "dsp-meta.json"), "utf8"));

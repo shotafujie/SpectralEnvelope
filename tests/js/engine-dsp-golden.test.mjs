@@ -70,3 +70,46 @@ test("相手を指定しても出力の長さは元音と同じ", () => {
   const r = render(engine, analysis(), ALL, N_SAMPLES, stretchPartner(B, N1));
   assert.equal(r.y.length, N_SAMPLES);
 });
+
+// ---------------------------------------------------------------- Python 版との照合
+
+import { goldenDsp, goldenDspSpAll, dspMeta } from "./golden.mjs";
+
+const META = dspMeta();
+const CASES = Object.keys(META.cases);
+const partnerFor = raw => (raw.morph ? stretchPartner(B, N1) : null);
+
+// TC-860-1
+test("7 つのパラメータの組の dB 列が Python 版と 1e-6 dB 以内で一致", () => {
+  for (const name of CASES) {
+    const raw = META.cases[name];
+    const partner = partnerFor(raw);
+    const sp = render(engine, analysis(), raw, N_SAMPLES, partner).sp;
+    const expected = goldenDsp(name).db;
+    for (const [row, frame] of META.frames.entries()) {
+      const got = Float64Array.from(sp.subarray(frame * F, (frame + 1) * F), dbNoEps);
+      const want = expected.subarray(row * F, (row + 1) * F);
+      assert.ok(maxAbsDiff(got, want) <= 1e-6, `${name} / frame ${frame}: ${maxAbsDiff(got, want)}`);
+    }
+  }
+});
+
+// TC-861-1
+test("7 つのパラメータの組の再合成音が Python 版と 1e-6 以内で一致", () => {
+  for (const name of CASES) {
+    const raw = META.cases[name];
+    const r = render(engine, analysis(), raw, N_SAMPLES, partnerFor(raw));
+    const d = maxAbsDiff(r.y, goldenDsp(name).y);
+    assert.ok(d <= 1e-6, `${name}: ${d}`);
+  }
+});
+
+// TC-862-1
+test("全パラメータの組で、加工後の sp 全体が Python 版と 1e-6 dB 以内で一致", () => {
+  const raw = META.cases.all;
+  const sp = render(engine, analysis(), raw, N_SAMPLES, partnerFor(raw)).sp;
+  const got = Float64Array.from(sp, dbNoEps);
+  const want = Float64Array.from(goldenDspSpAll(), dbNoEps);
+  const d = maxAbsDiff(got, want);
+  assert.ok(d <= 1e-6, String(d));
+});
