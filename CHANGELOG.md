@@ -2,6 +2,72 @@
 
 記法は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/)、採番は [SemVer](https://semver.org/lang/ja/) に従う。
 
+## [0.2.0] - 2026-09-22
+
+サーバーを無くし、ブラウザの中だけで分解と再合成が完結するようにして、GitHub Pages から配信するようにした。
+
+**https://shotafujie.github.io/SpectralEnvelope/**
+
+### 追加
+
+**ブラウザ内の WORLD**（`006-wasm-world`）
+
+- WORLD（[mmorise/World](https://github.com/mmorise/World) の `d625e76`、修正 BSD）を Emscripten で WebAssembly にビルドし、harvest / cheaptrick / d4c / synthesis を薄い C ラッパー越しに公開する
+- ビルドは Docker の `emscripten/emsdk`（ダイジェスト固定）で行い、成果物（`world.mjs` / `world.wasm`）はリポジトリにコミットする（`ADR-0002`）
+- 同じ入力から同じバイト列が出ること（再現ビルド）をテストで確かめる
+
+**DSP の JS 移植**（`007-engine-dsp`）
+
+- formant / smooth / tilt / bands / ゲインカーブ / morph とパラメータ解釈を JS へ移した
+- ケプストラム平滑化の DCT は FFT ベース（1025 点 × 600 フレームを O(N²) で回さない）
+- 凍結した Python 版を生成器にしたゴールデンデータと **1e-6 以内で一致する**ことをテストにしてある
+
+**ブラウザだけで動くアプリ**（`008-browser-app`）
+
+- エンジンを Web Worker に載せ、画面はアダプタ（`window.engine`）越しに呼ぶ
+- 音声のデコードは `decodeAudioData` と `OfflineAudioContext`（44.1kHz モノラル）。**ffmpeg が不要になった**
+- 再生は WAV を作らず `AudioBuffer` を直接鳴らす
+- 分解結果はブラウザの中に最大 10 件、Float32 で保持する
+- 画面の見た目と操作は v0.1.0 のまま（変えたのはエンジンの呼び方と、そこから生じる表示だけ）
+
+**配信と CI**（`009-pages-deploy`）
+
+- GitHub Actions のワークフロー。**照合**（`world.wasm` をソースから再ビルドしてコミット済みとバイト単位で突き合わせる）→ **テスト** → 両方が通ったときだけ **配信**
+- glue（`world.mjs`）と `world.wasm` を同じスタンプ（SHA-256 の先頭 12 桁）を付けた URL で読み込み、新旧の混ざりを防ぐ
+- WORLD のライセンス文を配信物に同梱し、画面から参照する
+
+### 変更
+
+- **アプリを使うだけなら Python / uv / ffmpeg は要らない**。手元で動かす場合も静的配信だけでよい
+- 入力の数値は v0.1.0 と一致しない。ffmpeg 版は 16bit に量子化していたが、ブラウザ版は Float32 のまま扱い、リサンプリングの実装もブラウザごとに違う（`ADR-0001` の「影響」）
+- `jig/server.py`（v0.1.0）は**凍結**。照合用ゴールデンデータの生成器として残す
+
+### 性能
+
+3 秒の合成母音・Apple M4 Max・Chromium 153 での実測（中央値、`benchmarks/browser-app/baseline.json`）。
+
+| 処理 | 実測 | 目標 |
+|---|---|---|
+| 分解（デコードを含む） | 0.61 秒 | < 3.0 秒 |
+| つまみ → グラフ更新 | 0.35 秒 | < 1.0 秒 |
+| 再合成 | 0.08 秒 | < 1.0 秒 |
+
+つまみからグラフ更新までには 300ms のデバウンスを含む。
+v0.1.0 のサーバー版（分解 0.47 秒・再合成 0.04 秒）と比べると、WASM 化で 1.3〜2 倍ほど遅くなっているが、目標の内側に収まっている。
+
+### 検証
+
+- 4 アイテム 232 仕様すべて PASS、孤児 0 件（`docs/items/006-*` 〜 `009-*` の `verification.md`）
+- 自動テスト: JS 140 件（エンジン・DSP・保持・再現ビルド）、Python + E2E 408 件
+
+### 既知の制限
+
+- **Safari と iOS は動作を保証しない**（`ADR-0001` の追記）。Chromium 系ブラウザで使う
+- 分解結果はページを閉じると消える（保持は最大 10 件のまま）
+- 10 秒を超える入力は先頭 10 秒だけを使う
+- リアルタイム処理はしない（録音 → 解析 → 再生のターン制）
+- 加工結果の書き出し、時間変化する加工、DTW による時間対応付けは未実装
+
 ## [0.1.0] - 2026-09-18
 
 録音した声を WORLD で分解し、スペクトル包絡だけを加工して聴き比べる治具の最初のリリース。
