@@ -26,3 +26,13 @@ docker run --rm --platform linux/arm64 \
     -sMODULARIZE -sEXPORT_ES6 -sALLOW_MEMORY_GROWTH -sENVIRONMENT=web,worker,node \
     -sEXPORTED_RUNTIME_METHODS=HEAPF64,HEAPU8 \
     -sEXPORTED_FUNCTIONS="$EXPORTS"
+
+# スタンプ: 成果物の SHA-256 を、成果物と同じディレクトリへ書き出す（009-pages-deploy / SPEC-1143）。
+# ブラウザから追加の取得なしに読めるよう .mjs にする。
+WASM_SHA=$(shasum -a 256 "$OUT/world.wasm" | cut -d' ' -f1)
+MJS_SHA=$(shasum -a 256 "$OUT/world.mjs" | cut -d' ' -f1)
+cat > "$OUT/stamp.mjs" <<EOF
+// engine/world/build.sh が書き出す。手で編集しない（009-pages-deploy / SPEC-1143）。
+export const WORLD_WASM_SHA256 = "$WASM_SHA";
+export const WORLD_MJS_SHA256 = "$MJS_SHA";
+EOF
