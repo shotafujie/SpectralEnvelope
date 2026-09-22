@@ -1,8 +1,13 @@
 # 引き継ぎ: ブラウザ単体で動かす（WASM 化）作業
 
-作成日: 2026-09-18 / 対象: `feature/wasm-engine` ブランチでこれから進める作業
+作成日: 2026-09-18 / **完了: 2026-09-22**
 
-この文書だけ読めば作業を再開できるようにしてある。すでに完了した v0.1.0 の内容は `CHANGELOG.md` と `docs/items/*/` を見る。
+> **この作業は完了した。以下は着手前に書いた引き継ぎで、記録として残してある。**
+> Phase 0〜4 をすべて消化し、v0.2.0 として https://shotafujie.github.io/SpectralEnvelope/ から配信している。
+> **いまの状態を知りたいなら `README.md` と `CHANGELOG.md` を見る。** 決定の根拠は `docs/adr/`、
+> 仕様と検証は `docs/items/006-*` 〜 `009-*` にある。
+> この文書で今も価値があるのは、3 節（調べがついていること）と 5 節（移植を安全にやるための要点）、
+> そして「何を判断の基準にしたか」（7 節）である。
 
 ## 1. なぜやるか
 
@@ -22,7 +27,9 @@ A 案（Python が動くホストに置く）、B 案（Pages + 手元のサー�
 - **実機計測（2026-09-18）**: Mac の Chrome は合格（3 秒の分解 0.59 秒）。Safari は計測しない（保証外）。Pixel は Phase 4（Pages 公開）の前に行う。詳細は ADR-0001 の追記。次は Phase 2（006 アイテムの仕様策定）
 - **006-wasm-world 完了（2026-09-18）**: WORLD の WASM エンジン。独立検証で 40 仕様すべて PASS、孤児 0 件（`docs/items/006-wasm-world/verification.md`）。次は 007-engine-dsp
 - **007-engine-dsp 完了（2026-09-21）**: DSP の JS 移植。独立検証で 55 仕様すべて PASS、孤児 0 件。Python 版との照合は 7 通りのパラメータで 1e-6 以内（`docs/items/007-engine-dsp/verification.md`）。次は 008-worker-ui
-- この作業のための仕様アイテム（`docs/items/006-*`）は未作成
+- **008-browser-app 完了（2026-09-21）**: Worker・保持・デコード・画面の差し替え。独立検証で 109 仕様すべて PASS、孤児 0 件（`docs/items/008-browser-app/verification.md`）。これで静的配信だけで動く状態になった。次は 009-pages-deploy（Phase 4）
+- **009-pages-deploy 完了（2026-09-22）**: CI（照合 → テスト → 配信）と GitHub Pages への配信。独立検証で 28 仕様すべて PASS、孤児 0 件（`docs/items/009-pages-deploy/verification.md`）。**Phase 0〜4 はここで終わり**
+- 4 アイテム 232 仕様すべて PASS。アイテムは `docs/items/006-wasm-world` / `007-engine-dsp` / `008-browser-app` / `009-pages-deploy`
 
 ## 3. 調べがついていること
 
@@ -105,6 +112,9 @@ JS 実装がそれと **1e-6 以内で一致する**ことをテストにする�
 
 ## 6. 再開するときのコマンド
 
+> 着手前に書いたもの。`feature/wasm-engine` は `main` にマージ済みで、成果物とビルドスクリプトは
+> `engine/world/`（`build.sh`）にある。いま手元で動かす手順は `README.md` を見る。
+
 ```bash
 cd ~/dev/speech/analyze/SpectralEnvelope
 git checkout feature/wasm-engine
@@ -156,6 +166,13 @@ void world_synthesize(const double* f0, const double* sp, const double* ap, int 
 
 ## 8. 未決・未報告
 
-- Pages を公開したときの扱い（録音データはブラウザ内で完結するので送信は無いが、その旨を画面に書くか）
-- Python 版を将来どうするか（当面は残す）
+完了時点（2026-09-22）で残っているもの。
+
+- **録音データが外へ出ないことを画面に書くか** は未決のまま。外へ出る要求がアプリ自身のファイルだけであることは
+  SPEC-1031 で検証しているが、画面には書いていない
+- Python 版（`jig/server.py`）を将来どうするか。当面は照合用ゴールデンデータの生成器として残す
 - `~/dev/.claude/hooks/trace-check.sh` の検査 [7]（アイテムをまたいだ仕様IDの重複）は構造上機能していない。共有設定リポジトリ側の不具合で、未修正
+- **Pixel などの実機での性能計測はしないと判断した**（2026-09-22、`009-pages-deploy/spec.md` のスコープ外に記載）。
+  Phase 4 の前に行う予定だったが、不要と判断して取りやめた
+- **CI から性能テストを外したこと**（SPEC-1112）は仕様と計測機の食い違いから来ている。振り返りの材料として
+  `docs/items/009-pages-deploy/verification.md` に残してある
