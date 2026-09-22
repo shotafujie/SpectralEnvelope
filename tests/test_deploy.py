@@ -91,3 +91,71 @@ def test_TC_1143_1_buildがスタンプを書き出す(tmp_path):
     stamp = (out / "stamp.mjs").read_text()
     assert sha256(out / "world.wasm") in stamp
     assert sha256(out / "world.mjs") in stamp
+
+
+# ---------------------------------------------------------------- 配信物の組み立て
+
+SITE_BUILD = ROOT / "tools/build_site.py"
+
+EXPECTED = {
+    "index.html",
+    "app/index.html",
+    "app/app.js",
+    "engine/adapter.mjs",
+    "engine/decode.mjs",
+    "engine/errors.mjs",
+    "engine/render.mjs",
+    "engine/store.mjs",
+    "engine/worker.mjs",
+    "engine/world-engine.mjs",
+    "engine/dsp/curves.mjs",
+    "engine/dsp/envelope.mjs",
+    "engine/dsp/params.mjs",
+    "engine/dsp/smooth.mjs",
+    "engine/world/stamp.mjs",
+    "engine/world/world.mjs",
+    "engine/world/world.wasm",
+    "third_party/world/LICENSE.txt",
+}
+
+
+@pytest.fixture
+def site(tmp_path):
+    out = tmp_path / "_site"
+    r = run([ROOT / ".venv/bin/python", SITE_BUILD, out])
+    assert r.returncode == 0, r.stdout + r.stderr
+    return out
+
+
+def listing(root):
+    return {str(p.relative_to(root)) for p in root.rglob("*") if p.is_file()}
+
+
+def test_TC_1123_1_組み立てスクリプトが出力先を作る(site):
+    assert site.is_dir()
+    assert (site / "index.html").exists()
+
+
+def test_TC_1124_1_配信物の中身(site):
+    assert listing(site) == EXPECTED
+
+
+def test_TC_1124_2_ビルド用のファイルは入らない(site):
+    assert not (site / "engine/world/build.sh").exists()
+    assert not (site / "engine/world/wrapper.cpp").exists()
+
+
+def test_TC_1125_1_appとengineはリポジトリと同一(site):
+    for rel in sorted(EXPECTED):
+        if rel.startswith(("app/", "engine/")):
+            assert (site / rel).read_bytes() == (ROOT / rel).read_bytes(), rel
+
+
+def test_TC_1126_1_余計なものが入らない(site):
+    bad = ("tests", "docs", "jig", "benchmarks", "third_party/world/src", ".git")
+    assert [p for p in listing(site) if p.startswith(bad)] == []
+
+
+def test_TC_1130_1_ライセンス文が入る(site):
+    assert (site / "third_party/world/LICENSE.txt").read_bytes() \
+        == (ROOT / "third_party/world/LICENSE.txt").read_bytes()

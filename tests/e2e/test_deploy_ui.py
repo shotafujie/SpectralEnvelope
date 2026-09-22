@@ -57,3 +57,60 @@ def test_TC_1142_1_スタンプの値がconsoleに出る(engine_page):
     hits = [m for m in logs if wasm in m]
     assert len(hits) == 1, logs
     assert mjs in hits[0]
+
+
+# ---------------------------------------------------------------- 配信物の画面
+
+@pytest.fixture(scope="module")
+def site_url(tmp_path_factory):
+    """組み立てた配信物を、静的ファイルを返すだけのサーバーで配信する。"""
+    import functools
+    import http.server
+    import subprocess
+    import threading
+
+    out = tmp_path_factory.mktemp("site") / "_site"
+    r = subprocess.run([str(ROOT / ".venv/bin/python"), str(ROOT / "tools/build_site.py"), str(out)],
+                       cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
+                          ".mjs": "text/javascript", ".wasm": "application/wasm"}
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(out)))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+
+
+def test_TC_1127_1_ルートを開くとアプリになる(browser, site_url):
+    ctx = browser.new_context(base_url=site_url)
+    page = ctx.new_page()
+    page.set_default_timeout(20000)
+    try:
+        page.goto("/")
+        page.wait_for_selector("#rec", timeout=20000)
+        assert page.locator("#graph").count() == 1
+        assert page.evaluate("() => typeof window.engine") == "object"
+    finally:
+        ctx.close()
+
+
+def test_TC_1131_1_画面からライセンスをたどれる(browser, site_url):
+    ctx = browser.new_context(base_url=site_url)
+    page = ctx.new_page()
+    page.set_default_timeout(20000)
+    try:
+        page.goto("/app/index.html")
+        link = page.locator("a[href$='LICENSE.txt']")
+        assert link.count() == 1
+        assert "WORLD" in page.inner_text("body")
+        res = page.request.get(link.first.get_attribute("href").replace("../", f"{site_url}/"))
+        assert res.status == 200
+        assert "Copyright" in res.text()
+    finally:
+        ctx.close()
