@@ -45,7 +45,7 @@ def test_TC_1100_1_ワークフローが照合スクリプトを呼ぶ(raw):
 
 
 def test_TC_1112_1_テストジョブがNodeテストを実行する(wf):
-    assert any("npm run test:js" in (s.get("run") or "") for s in steps_of(wf, TEST_JOB))
+    assert any("npm run test:js:ci" in (s.get("run") or "") for s in steps_of(wf, TEST_JOB))
 
 
 def test_TC_1112_2_Nodeテストは失敗すると0以外で終わる(tmp_path):
@@ -56,7 +56,7 @@ def test_TC_1112_2_Nodeテストは失敗すると0以外で終わる(tmp_path):
                    'import assert from "node:assert/strict";\n'
                    'test("わざと落とす", () => assert.equal(1, 2));\n')
     try:
-        r = subprocess.run(["npm", "run", "test:js"], cwd=ROOT, capture_output=True, text=True)
+        r = subprocess.run(["npm", "run", "test:js:ci"], cwd=ROOT, capture_output=True, text=True)
         assert r.returncode != 0
     finally:
         bad.unlink()
@@ -99,3 +99,20 @@ def test_TC_1122_1_書き込み権限はデプロイジョブだけ(wf):
 
 def test_TC_1123_1_ワークフローが組み立てスクリプトを呼ぶ(raw):
     assert "tools/build_site.py" in raw
+
+
+def test_TC_1112_3_性能テストは対象から外れている():
+    """package.json のファイル選択そのものを評価して、対象を確かめる。"""
+    import json
+    import subprocess
+
+    script = json.loads((ROOT / "package.json").read_text())["scripts"]["test:js:ci"]
+    selector = re.search(r"\$\((.+)\)", script).group(1)
+    r = subprocess.run(["sh", "-c", selector], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    selected = {Path(line).name for line in r.stdout.split()}
+
+    every = {p.name for p in (ROOT / "tests/js").glob("*.test.mjs")}
+    perf = {n for n in every if n.endswith("-perf.test.mjs")}
+    assert perf, "性能テストのファイルが見つからない"
+    assert selected == every - perf

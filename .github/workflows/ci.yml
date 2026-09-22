@@ -34,8 +34,9 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
-      - name: Node のテスト
-        run: npm run test:js
+      # 性能テストは共有ランナーの速さに左右されるので、配信の門には使わない（SPEC-1112）
+      - name: Node のテスト（性能テストを除く）
+        run: npm run test:js:ci
 
   # E2E（Playwright）は手元で回す。ここでは回さない（SPEC-1150）
   deploy:
