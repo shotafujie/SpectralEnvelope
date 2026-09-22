@@ -26,8 +26,9 @@ jobs:
       - name: 成果物を再ビルドしてコミット済みと突き合わせる
         run: tools/verify_wasm.sh
 
+  # 006 のビルドテスト（SPEC-704）は arm64 のマシンでしか判定できないので、ここも arm64 で動かす
   test-js:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6

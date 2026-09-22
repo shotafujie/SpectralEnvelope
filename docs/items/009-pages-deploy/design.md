@@ -35,6 +35,8 @@
   画面からのリンクは `../third_party/world/LICENSE.txt` で、リポジトリでも配信物でも同じ相対位置になる
 - **照合は 3 ファイル（wasm・glue・スタンプ）のバイト比較 + スタンプと成果物の突き合わせ**。
   これで「再ビルド忘れ」「成果物だけの差し替え」「スタンプの手書き換え」のどれも失敗にできる
+- **テストジョブも arm64 で動かす。** 006 のビルドテスト（SPEC-704）が「arm64 でビルドすると
+  コミット済みと同一になる」を判定するもので、x64 のランナーでは落ちるため
 - **CI で E2E は回さない。** Playwright の用意で 10 分を超えるため。手元で回す運用を続ける（SPEC-1150）
 
 ## ワークフローの形
@@ -42,7 +44,7 @@
 ```
 on: [push, pull_request]        permissions: contents: read（既定）
 
-  verify-wasm (ubuntu-24.04-arm)      test-js (ubuntu-24.04)
+  verify-wasm (ubuntu-24.04-arm)      test-js (ubuntu-24.04-arm)
     tools/verify_wasm.sh                npm run test:js
             └──────────┬──────────────────────┘
                        ▼
