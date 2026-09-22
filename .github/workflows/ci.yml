@@ -1,0 +1,61 @@
+# 照合・テスト・配信（009-pages-deploy / ADR-0002 の決定 4）。
+#
+# 配信されている world.wasm が、リポジトリにあるソースから作られたものだと言えるようにする。
+# 照合はコミット済みの成果物をソースから再ビルドして突き合わせ、
+# 一致しなければ配信しない（deploy は needs で両ジョブの成功を待つ）。
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# 既定は読み取りだけ。書き込みは deploy ジョブにだけ与える
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 成果物がソースから作られたものかを確かめる。ビルドを固定するため arm64 で動かす
+  verify-wasm:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: 成果物を再ビルドしてコミット済みと突き合わせる
+        run: tools/verify_wasm.sh
+
+  # 006 のビルドテスト（SPEC-704）は arm64 のマシンでしか判定できないので、ここも arm64 で動かす
+  test-js:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      # 性能テストは共有ランナーの速さに左右されるので、配信の門には使わない（SPEC-1112）
+      - name: Node のテスト（性能テストを除く）
+        run: npm run test:js:ci
+
+  # E2E（Playwright）は手元で回す。ここでは回さない（SPEC-1150）
+  deploy:
+    needs: [verify-wasm, test-js]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: 配信物を組み立てる
+        run: python3 tools/build_site.py _site
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

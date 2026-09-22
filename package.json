@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:js": "node --test 'tests/js/*.test.mjs'"
+    "test:js": "node --test 'tests/js/*.test.mjs'",
+    "test:js:ci": "node --test $(ls tests/js/*.test.mjs | grep -v -- '-perf.test.mjs')"
   }
 }

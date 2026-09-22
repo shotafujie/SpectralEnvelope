@@ -1,6 +1,6 @@
 // WORLD の WASM エンジン（006-wasm-world）。
 // 分解（harvest → cheaptrick → d4c）と再合成を、Float64Array の入出力で提供する。状態は持たない。
-import createWorld from "./world/world.mjs";
+import { WORLD_WASM_SHA256, WORLD_MJS_SHA256 } from "./world/stamp.mjs";
 
 const FS = 44100;
 const FFT_SIZE = 2048;
@@ -15,8 +15,18 @@ function checkSignal(x) {
     throw new RangeError(`x の長さは ${MIN_SAMPLES}〜${MAX_SAMPLES} サンプルです（${x.length}）`);
 }
 
+// ブラウザでは glue と wasm に同じ印を付けて読み込む（009-pages-deploy / SPEC-1140〜1142）。
+// 印はスタンプの wasm の SHA-256 の先頭 12 桁で、両方に同じ値を付けるので新旧の対が混ざらない。
+// Node の glue は wasm をファイルとして読むため、印を付けない。
+const IN_NODE = typeof process !== "undefined" && !!process.versions?.node;
+const MARK = IN_NODE ? "" : `?v=${WORLD_WASM_SHA256.slice(0, 12)}`;
+
 export async function createEngine() {
-  const M = await createWorld();
+  const { default: createWorld } = await import(`./world/world.mjs${MARK}`);
+  const M = await createWorld(
+    IN_NODE ? undefined : { locateFile: name => new URL(`./world/${name}${MARK}`, import.meta.url).href },
+  );
+  if (!IN_NODE) console.log(`WORLD 成果物 wasm=${WORLD_WASM_SHA256} glue=${WORLD_MJS_SHA256}`);
 
   // 呼び出しの間だけ WASM のメモリを借り、戻る前に必ず返す
   function withBuffers(lengths, fn) {
