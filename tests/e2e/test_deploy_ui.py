@@ -93,6 +93,7 @@ def test_TC_1127_1_ルートを開くとアプリになる(browser, site_url):
     page.set_default_timeout(20000)
     try:
         page.goto("/")
+        page.wait_for_url("**/app/")  # ルートは app/ へ送るだけ
         page.wait_for_selector("#rec", timeout=20000)
         assert page.locator("#graph").count() == 1
         assert page.evaluate("() => typeof window.engine") == "object"

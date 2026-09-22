@@ -39,6 +39,7 @@ def test_TC_1129_2_配信URLでファイルを読み込んで再生できる(bro
     page.set_default_timeout(60000)
     try:
         page.goto(SITE)
+        page.wait_for_url("**/app/")  # ルートは app/ へ送るだけなので、移り終わるまで待つ
         page.wait_for_selector("#rec")
         page.set_input_files("#file", str(wav_files["voice"]))
         page.wait_for_function("() => document.querySelector('#graph').dataset.id")
