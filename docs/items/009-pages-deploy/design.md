@@ -18,7 +18,7 @@
 | `tests/test_deploy.py` | 照合と組み立てのテスト | 新規 |
 | `tests/test_workflow.py` | ワークフローの YAML のテスト | 新規 |
 | `tests/e2e/test_deploy_ui.py` | 成果物の対・ライセンス表示・配信物の画面 | 新規 |
-| `tests/test_pages_live.py` | Pages の設定と配信 URL（配信後にしか通らない） | 新規 |
+| `tests/e2e/test_pages_live.py` | Pages の設定と配信 URL（配信後にしか通らない） | 新規 |
 | `requirements.txt` | テストで YAML を読むため pyyaml を足す | 変更 |
 
 ## 決めたこと

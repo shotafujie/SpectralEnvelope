@@ -11,3 +11,4 @@ python-multipart
 pytest
 httpx
 playwright
+pyyaml  # ワークフローの YAML をテストから読む

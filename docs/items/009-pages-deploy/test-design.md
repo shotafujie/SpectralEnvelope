@@ -11,7 +11,7 @@
 | スクリプト | 照合・配信物の組み立て | `tests/test_deploy.py` | `.venv/bin/pytest tests/test_deploy.py` |
 | 静的解析 | ワークフローの YAML | `tests/test_workflow.py` | `.venv/bin/pytest tests/test_workflow.py` |
 | ブラウザ | 成果物の対・ライセンス表示・配信物の画面 | `tests/e2e/test_deploy_ui.py` | `.venv/bin/pytest tests/e2e/test_deploy_ui.py` |
-| 実配信 | Pages の設定と配信 URL | `tests/test_pages_live.py` | `.venv/bin/pytest tests/test_pages_live.py` |
+| 実配信 | Pages の設定と配信 URL | `tests/e2e/test_pages_live.py` | `.venv/bin/pytest tests/e2e/test_pages_live.py` |
 
 ### 観測点
 
