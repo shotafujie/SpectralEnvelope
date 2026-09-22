@@ -1,0 +1,8 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>WORLD エンジン: Worker からの読み込み（TC-714-1）</title>
+<script>
+  const w = new Worker("world_worker.mjs", { type: "module" });
+  w.onmessage = ({ data }) => { window.result = data; };
+  w.onerror = e => { window.result = { error: String(e.message) }; };
+</script>

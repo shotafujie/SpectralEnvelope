@@ -17,6 +17,11 @@ A 案（Python が動くホストに置く）、B 案（Pages + 手元のサー�
 - `main` は **v0.1.0** をリリース済み。https://github.com/shotafujie/SpectralEnvelope
   - 5 アイテム 149 仕様すべて PASS、テスト 238 件、受け入れ試聴 M1〜M3 合格（リビジョン `ce54387` で独立検証）
 - `feature/wasm-engine` ブランチを作成済み。**まだ 1 行も実装していない**
+- **Phase 0 スパイク完了（2026-09-18）**: 3 指標とも合格したので C 案で進める。結果は `docs/research/wasm-spike.md`。次は Phase 1（ADR）
+- **Phase 1 完了（2026-09-18）**: ADR-0001（ブラウザ内 WASM エンジン）と ADR-0002（成果物の配布）を Accepted。次は ADR-0001 決定 7 の実機計測（Mac の Chrome / Safari、Pixel の Chrome）
+- **実機計測（2026-09-18）**: Mac の Chrome は合格（3 秒の分解 0.59 秒）。Safari は計測しない（保証外）。Pixel は Phase 4（Pages 公開）の前に行う。詳細は ADR-0001 の追記。次は Phase 2（006 アイテムの仕様策定）
+- **006-wasm-world 完了（2026-09-18）**: WORLD の WASM エンジン。独立検証で 40 仕様すべて PASS、孤児 0 件（`docs/items/006-wasm-world/verification.md`）。次は 007-engine-dsp
+- **007-engine-dsp 完了（2026-09-21）**: DSP の JS 移植。独立検証で 55 仕様すべて PASS、孤児 0 件。Python 版との照合は 7 通りのパラメータで 1e-6 以内（`docs/items/007-engine-dsp/verification.md`）。次は 008-worker-ui
 - この作業のための仕様アイテム（`docs/items/006-*`）は未作成
 
 ## 3. 調べがついていること

@@ -163,3 +163,92 @@ def drag_handle(page, j, gain=None, svg_y=None, dx=0, steps=5, release=True):
 
 def log_x_ratio(f):
     return math.log(f / 50) / math.log(441)
+
+
+# ---------------------------------------------------------------- ブラウザ版（008-browser-app）
+#
+# 観測点はネットワーク要求ではなくアダプタの呼び出し（window.__calls）。
+# 画面側の観測点は v0.1.0 と同じだが、再生は audio 要素ではなく
+# #player の data-source / data-playing（AudioBuffer で鳴らすため）。
+
+def calls(page, name=None):
+    items = page.evaluate("() => window.__calls")
+    return [c for c in items if name is None or c["name"] == name]
+
+
+def clear_calls(page):
+    page.evaluate("() => { window.__calls.length = 0; }")
+
+
+def wait_calls(page, name, n, timeout=3.0):
+    """name の呼び出しが n 件以上になるまで待ち、件数を返す（増えなくても落とさない）。"""
+    deadline = time.monotonic() + timeout
+    while len(calls(page, name)) < n and time.monotonic() < deadline:
+        page.wait_for_timeout(50)
+    return len(calls(page, name))
+
+
+def hold(page, name):
+    """name の呼び出しの解決を保留する（release で解く）。"""
+    page.evaluate("n => { window.__hold = n; }", name)
+
+
+def wait_held_call(page, timeout=10.0):
+    """保留された呼び出しが 1 件以上になるまで待つ（v0.1.0 の wait_held とは別物）。"""
+    deadline = time.monotonic() + timeout
+    while not page.evaluate("() => window.__held.length"):
+        assert time.monotonic() < deadline, "保留された呼び出しがありません"
+        page.wait_for_timeout(50)
+
+
+def release(page):
+    page.evaluate("() => window.__release()")
+
+
+def app_record(page, seconds=2.5):
+    """録音して分解完了まで待ち、その分解結果の情報を返す。"""
+    prev = graph_id(page)
+    page.click("#rec")
+    page.wait_for_timeout(int(seconds * 1000))
+    page.click("#rec")
+    expect(page.locator("#frame")).to_be_enabled()
+    wait_new_graph_id(page, prev)
+    return app_info(page)
+
+
+def app_load_file(page, path):
+    """ファイルを読み込んで分解完了まで待ち、その分解結果の情報を返す。"""
+    prev = graph_id(page)
+    page.set_input_files("#file", str(path))
+    wait_new_graph_id(page, prev)
+    return app_info(page)
+
+
+def graph_id(page):
+    return page.evaluate("() => document.querySelector('#graph').dataset.id || ''")
+
+
+def wait_new_graph_id(page, prev):
+    page.wait_for_function(
+        "prev => { const id = document.querySelector('#graph').dataset.id; return id && id !== prev; }", arg=prev)
+
+
+def app_info(page):
+    """今グラフに出ている分解結果の情報。"""
+    return page.evaluate("""async () => {
+        const id = document.querySelector('#graph').dataset.id;
+        return (await window.engine.list()).find(i => i.id === id) || null;
+    }""")
+
+
+def app_wait_playing(page, source, timeout=10000):
+    """指定の音が鳴り始めるまで待つ。"""
+    page.wait_for_function(
+        "src => { const p = document.querySelector('#player');"
+        " return p.dataset.source === src && p.dataset.playing !== '0'; }",
+        arg=source, polling=20, timeout=timeout,
+    )
+
+
+def app_playing_count(page):
+    return int(page.get_attribute("#player", "data-playing"))

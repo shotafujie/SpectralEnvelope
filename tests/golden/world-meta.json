@@ -1,0 +1,51 @@
+{
+ "analysis": {
+  "fft_size": 2048,
+  "frame_period": 5.0,
+  "fs": 44100,
+  "harvest": "pyworld.harvest(x, fs, frame_period)",
+  "y": "pyworld.synthesize(f0, sp, ap, fs, frame_period)[: len(x)]"
+ },
+ "format": "リトルエンディアンの Float64。2 次元は行優先",
+ "shapes": {
+  "partner-i-1.5s.logsp.f64": [
+   301,
+   1025
+  ],
+  "vowel-a-10s.f64": [
+   441000
+  ],
+  "vowel-a-3s.f64": [
+   132300
+  ],
+  "vowel-a-gap-2.5s.f64": [
+   110250
+  ],
+  "world-a-1s.ap.f64": [
+   201,
+   1025
+  ],
+  "world-a-1s.f0.f64": [
+   201
+  ],
+  "world-a-1s.sp.f64": [
+   201,
+   1025
+  ],
+  "world-a-1s.t.f64": [
+   201
+  ],
+  "world-a-1s.x.f64": [
+   44100
+  ],
+  "world-a-1s.y.f64": [
+   44100
+  ]
+ },
+ "source": "tests/audio_fixtures.py の vowel(\"a\", dur=...)",
+ "versions": {
+  "numpy": "2.5.3",
+  "pyworld": "0.3.5",
+  "scipy": "1.18.1"
+ }
+}

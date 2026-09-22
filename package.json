@@ -1,0 +1,8 @@
+{
+  "name": "spectral-envelope",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:js": "node --test 'tests/js/*.test.mjs'"
+  }
+}
